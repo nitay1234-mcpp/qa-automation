@@ -64,8 +64,6 @@ def test_payment_with_fraud_detection(page: Page):
     assert page.locator('.fraud-detection-message').is_visible()  # Check for fraud detection message
 
 
-# New Test Cases
-
 def test_payment_with_expired_card(page: Page):
     page.goto('https://staging.novapay.io/checkout')
     page.fill('[aria-label="Payment amount"]', '100')
