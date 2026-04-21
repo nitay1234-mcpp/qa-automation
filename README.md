@@ -86,3 +86,8 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ## Contact Information
 For questions or support, please reach out to [your_email@example.com]. For quicker responses, consider joining our [Slack channel](https://example.com/slack).
+
+## Enhancements
+### Payment Cancellation Endpoint
+- **Overview**: Added tests to ensure payment cancellation logic is functioning correctly.
+- **Test Cases**: Implemented scenarios for successful and unsuccessful cancellation requests, including cases for payments in progress and completed payments.
