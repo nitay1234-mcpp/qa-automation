@@ -13,7 +13,13 @@ def log_event(event_type, details):
     (100, None),  # Valid payment
     (-50, 'Invalid amount'),  # Invalid amount
     (0, 'Invalid amount'),  # Zero amount
-    (None, 'Invalid amount')  # None amount
+    (None, 'Invalid amount'),  # None amount
+    ('abc', 'Invalid amount'),  # Non-numeric string
+    (1000000, 'Amount exceeds limit'),  # Exceeds maximum payment limit
+    (-100, 'Invalid amount'),  # Negative amount
+    ('', 'Invalid amount'),  # Empty string
+    ('-1.99', 'Invalid amount'),  # Negative decimal
+    (150.50, None),  # Valid decimal payment
 ])
 def test_payment_flow(page: Page, amount, expected_error):
     page.goto('https://staging.novapay.io/checkout')
@@ -30,6 +36,21 @@ def test_payment_flow(page: Page, amount, expected_error):
         page.wait_for_selector('.payment-success')
         assert page.locator('.payment-success').is_visible()
         log_event("Payment Success", {"amount": amount, "timestamp": datetime.now()})
+
+
+@pytest.mark.parametrize('amount', [
+    (500),  # Valid payment
+    (1000),  # Higher valid payment
+    (9999),  # Maximum boundary payment
+    (1.99),  # Valid payment with cents
+])
+def test_valid_payment_scenarios(page: Page, amount):
+    page.goto('https://staging.novapay.io/checkout')
+    page.fill('[aria-label="Payment amount"]', str(amount))
+    page.click('button[type="submit"]')
+    page.wait_for_selector('.payment-success')
+    assert page.locator('.payment-success').is_visible()
+    log_event("Payment Success", {"amount": amount, "timestamp": datetime.now()})
 
 
 def test_payment_with_network_failure(page: Page):
