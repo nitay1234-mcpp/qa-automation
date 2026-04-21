@@ -9,12 +9,12 @@ fake = Faker()
 @pytest.fixture
 def get_valid_amounts() -> List[float]:
     """Returns a list of valid payment amounts for testing, including edge cases."""
-    return [0.01, 100, 500, 1000, 150.50, 9999, 999999]
+    return [0.01, 100, 500, 1000, 150.50, 9999, 999999, 0.05, 2500]  # Added more edge cases
 
 @pytest.fixture
 def get_invalid_amounts() -> List[Any]:
     """Returns a list of invalid payment amounts for testing, including edge cases."""
-    return [None, -50, 0, 'abc', 1000001, '', '-1.99', float('inf'), -float('inf'), '   ']
+    return [None, -50, 0, 'abc', 1000001, '', '-1.99', float('inf'), -float('inf'), '   ', '0.01abc']  # Categorized invalid inputs
 
 @pytest.fixture
 def get_user_profiles() -> List[Dict[str, Any]]:
@@ -25,9 +25,11 @@ def get_user_profiles() -> List[Dict[str, Any]]:
         {'user_id': 3, 'user_type': 'high-value', 'payment_history': [10000, 20000]},
         {'user_id': 4, 'user_type': 'inactive', 'payment_history': [50, 75, 40]},  # User with failed payments
         {'user_id': 5, 'user_type': 'new', 'payment_history': [], 'email': fake.email(), 'name': fake.name()},  # Randomized user
+        {'user_id': 6, 'user_type': 'fraudulent', 'payment_history': [200000]},  # User with suspicious high payments
+        {'user_id': 7, 'user_type': 'new', 'payment_history': [], 'email': fake.email(), 'name': fake.name()},  # Another randomized user
     ]
 
-@pytest.fixture(params=[0.01, 100, 500, 1000])
+@pytest.fixture(params=[0.01, 100, 500, 1000, 2500])
 def valid_amount(request) -> float:
     """Provides various valid payment amounts for testing."""
     return request.param
