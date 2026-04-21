@@ -28,6 +28,15 @@ This will execute all test cases in the `tests` directory. For more specific tes
 ```bash
 pytest tests/test_payment_flow.py
 ```
+To check the test coverage, you can run:
+```bash
+pytest --cov=tests
+```
+This command will display a coverage report in the terminal. For a detailed HTML report, use:
+```bash
+pytest --cov=tests --cov-report=html
+```
+The coverage report can be found in the `htmlcov` directory after running this command.
 
 ## Contributing
 We welcome contributions to the `qa-automation` project! Please follow these steps:
@@ -45,6 +54,12 @@ For detailed output, use:
 pytest -v
 ```
 The results will indicate passed and failed tests, along with relevant error messages.
+
+Additionally, to assess test coverage, run:
+```bash
+pytest --cov=.
+```
+This will provide a summary of the coverage in the terminal. To view more detailed coverage, consider generating an HTML report.
 
 ## Additional Resources
 - [Playwright Documentation](https://playwright.dev/docs/intro)
