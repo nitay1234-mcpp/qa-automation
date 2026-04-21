@@ -1,17 +1,21 @@
 # Test Fixtures for Payment Processing Tests
 
 import pytest
+from typing import List, Dict, Any
 
 @pytest.fixture
-def valid_amounts():
+def get_valid_amounts() -> List[float]:
+    """Returns a list of valid payment amounts for testing."""
     return [100, 500, 1000, 150.50, 9999]
 
 @pytest.fixture
-def invalid_amounts():
+def get_invalid_amounts() -> List[Any]:
+    """Returns a list of invalid payment amounts for testing."""
     return [None, -50, 0, 'abc', 1000001, '', '-1.99']
 
 @pytest.fixture
-def user_profiles():
+def get_user_profiles() -> List[Dict[str, Any]]:
+    """Returns a list of user profiles with varying payment histories."""
     return [
         {'user_id': 1, 'user_type': 'new', 'payment_history': []},
         {'user_id': 2, 'user_type': 'repeat', 'payment_history': [100, 200]},
