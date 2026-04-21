@@ -9,6 +9,11 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 def log_event(event_type, details):
     logging.info(f"{event_type}: {details}")
 
+@pytest.fixture
+def navigate_to_checkout(page: Page):
+    page.goto('https://staging.novapay.io/checkout')
+    return page
+
 @pytest.mark.parametrize('amount, expected_error', [
     (100, None),  # Valid payment
     (-1, 'Invalid amount'),  # Very small negative
@@ -27,8 +32,8 @@ def log_event(event_type, details):
     ('-1.99', 'Invalid amount'),  # Negative decimal
     (9999.98, None),  # Just below the limit
 ])
-def test_payment_flow(page: Page, amount, expected_error):
-    page.goto('https://staging.novapay.io/checkout')
+def test_payment_flow(navigate_to_checkout, amount, expected_error):
+    page = navigate_to_checkout
     if amount is not None:
         page.fill('[aria-label="Payment amount"]', str(amount))
     page.click('button[type="submit"]')
@@ -51,8 +56,8 @@ def test_payment_flow(page: Page, amount, expected_error):
     ({'number': '4111111111111111', 'cvv': '123', 'expiry': '01/19'}, 'Card expired'),  # Expired card
     ({'number': '4111111111111111', 'cvv': '123', 'expiry': '01/22'}, None),  # Valid card not expired
 ])
-def test_payment_processing_invalid_card(page: Page, card_info, expected_error):
-    page.goto('https://staging.novapay.io/checkout')
+def test_payment_processing_invalid_card(navigate_to_checkout, card_info, expected_error):
+    page = navigate_to_checkout
     page.fill('[aria-label="Card number"]', card_info['number'])
     page.fill('[aria-label="CVV"]', card_info['cvv'])
     if 'expiry' in card_info:
@@ -68,7 +73,8 @@ def test_payment_processing_invalid_card(page: Page, card_info, expected_error):
     (12345, 'success'),  # Valid transaction ID
     (67890, 'not_found'),  # Non-existing transaction ID
 ])
-def test_transaction_retrieval(page: Page, transaction_id, expected_status):
+def test_transaction_retrieval(navigate_to_checkout, transaction_id, expected_status):
+    page = navigate_to_checkout
     page.goto(f'https://staging.novapay.io/transaction/{transaction_id}')
     if expected_status == 'success':
         page.wait_for_selector('.transaction-details')
@@ -84,7 +90,8 @@ def test_transaction_retrieval(page: Page, transaction_id, expected_status):
     (12345, 'canceled'),  # Valid cancellation
     (67890, 'not_found'),  # Non-existing transaction ID
 ])
-def test_payment_cancellation(page: Page, transaction_id, expected_result):
+def test_payment_cancellation(navigate_to_checkout, transaction_id, expected_result):
+    page = navigate_to_checkout
     page.goto(f'https://staging.novapay.io/cancel/{transaction_id}')
     if expected_result == 'canceled':
         page.click('button[type="confirm"]')
