@@ -25,6 +25,7 @@ def log_event(event_type, details):
     (None, 'Invalid amount'),  # None amount
     ('', 'Invalid amount'),  # Empty string
     ('-1.99', 'Invalid amount'),  # Negative decimal
+    (9999.98, None),  # Just below the limit
 ])
 def test_payment_flow(page: Page, amount, expected_error):
     page.goto('https://staging.novapay.io/checkout')
@@ -48,15 +49,49 @@ def test_payment_flow(page: Page, amount, expected_error):
     ({'number': '4111111111111111', 'cvv': '123', 'expiry': '01/21'}, None),  # Valid card
     ({'number': '4111111111111111', 'cvv': '12a'}, 'Invalid CVV'),  # Invalid format
     ({'number': '4111111111111111', 'cvv': '123', 'expiry': '01/19'}, 'Card expired'),  # Expired card
+    ({'number': '4111111111111111', 'cvv': '123', 'expiry': '01/22'}, None),  # Valid card not expired
 ])
 def test_payment_processing_invalid_card(page: Page, card_info, expected_error):
     page.goto('https://staging.novapay.io/checkout')
     page.fill('[aria-label="Card number"]', card_info['number'])
     page.fill('[aria-label="CVV"]', card_info['cvv'])
+    if 'expiry' in card_info:
+        page.fill('[aria-label="Expiry"]', card_info['expiry'])
     page.click('button[type="submit"]')
     page.wait_for_selector('.error-message')
     assert page.locator('.error-message').is_visible()
     assert expected_error in page.locator('.error-message').inner_text()
     log_event("Invalid Card Processing", {"card_info": card_info, "expected_error": expected_error})
 
-# Other tests remain unchanged
+# Additional test for transaction retrieval
+@pytest.mark.parametrize('transaction_id, expected_status', [
+    (12345, 'success'),  # Valid transaction ID
+    (67890, 'not_found'),  # Non-existing transaction ID
+])
+def test_transaction_retrieval(page: Page, transaction_id, expected_status):
+    page.goto(f'https://staging.novapay.io/transaction/{transaction_id}')
+    if expected_status == 'success':
+        page.wait_for_selector('.transaction-details')
+        assert page.locator('.transaction-details').is_visible()
+        log_event("Transaction Retrieval Success", {"transaction_id": transaction_id})
+    else:
+        page.wait_for_selector('.error-message')
+        assert page.locator('.error-message').is_visible()
+        log_event("Transaction Not Found", {"transaction_id": transaction_id})
+
+# Additional test for payment cancellation
+@pytest.mark.parametrize('transaction_id, expected_result', [
+    (12345, 'canceled'),  # Valid cancellation
+    (67890, 'not_found'),  # Non-existing transaction ID
+])
+def test_payment_cancellation(page: Page, transaction_id, expected_result):
+    page.goto(f'https://staging.novapay.io/cancel/{transaction_id}')
+    if expected_result == 'canceled':
+        page.click('button[type="confirm"]')
+        page.wait_for_selector('.cancellation-success')
+        assert page.locator('.cancellation-success').is_visible()
+        log_event("Payment Cancellation Success", {"transaction_id": transaction_id})
+    else:
+        page.wait_for_selector('.error-message')
+        assert page.locator('.error-message').is_visible()
+        log_event("Cancellation Not Found", {"transaction_id": transaction_id})
