@@ -13,6 +13,10 @@ def log_event(event_type, details):
 @pytest.mark.parametrize('kyb_docs, expected_result', [
     ({'type': 'business_license', 'file': 'valid_license.pdf'}, 'success'),  # Valid KYB document
     ({'type': 'business_license', 'file': 'invalid_license.pdf'}, 'failed'),  # Invalid KYB document
+    ({'type': 'tax_id', 'file': 'valid_tax_id.pdf'}, 'success'),  # Valid tax ID document
+    ({'type': 'tax_id', 'file': 'invalid_tax_id.pdf'}, 'failed'),  # Invalid tax ID document
+    ({'type': 'incorporation_certificate', 'file': 'valid_certificate.pdf'}, 'success'),  # Valid incorporation certificate
+    ({'type': 'incorporation_certificate', 'file': 'invalid_certificate.pdf'}, 'failed'),  # Invalid incorporation certificate
 ])
 def test_submit_kyb_documents(page: Page, kyb_docs, expected_result):
     page.goto('https://staging.novapay.io/kyb-submit')
