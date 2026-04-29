@@ -150,3 +150,28 @@ class TestPaymentProcessing:
         response = processor.process_payment(amount=100, card_info=card_info)
         logger.debug(f"Edge case response: {response}")
         assert response['status'] == expected_status, f"Expected {expected_status} for {card_info}. Got {response['status']}"
+
+    # New tests for handling refunds and partial payments
+    @pytest.mark.parametrize("amount, expected_status", [
+        (50, 'success'),  # Valid partial payment
+        (150, 'error'),  # Invalid partial payment exceeding original amount
+        (0, 'error')  # Invalid partial payment
+    ])
+    def test_partial_payments(self, amount, expected_status):
+        logger.info(f"Testing partial payment with amount: {amount}")
+        processor = PaymentProcessor()
+        response = processor.process_partial_payment(amount=amount, card_info={'number': '4111111111111111', 'cvv': '123'})
+        logger.debug(f"Partial payment response: {response}")
+        assert response['status'] == expected_status, f"Expected {expected_status} for partial payment of {amount}. Got {response['status']}"
+
+    @pytest.mark.parametrize("amount, expected_status", [
+        (100, 'success'),  # Valid refund
+        (50, 'error'),  # Invalid refund amount less than original payment
+        (0, 'error')  # Invalid refund amount
+    ])
+    def test_refunds(self, amount, expected_status):
+        logger.info(f"Testing refund with amount: {amount}")
+        processor = PaymentProcessor()
+        response = processor.process_refund(amount=amount, card_info={'number': '4111111111111111', 'cvv': '123'})
+        logger.debug(f"Refund response: {response}")
+        assert response['status'] == expected_status, f"Expected {expected_status} for refund of {amount}. Got {response['status']}"
