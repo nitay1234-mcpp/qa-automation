@@ -92,3 +92,48 @@ def test_user_experience_on_failure(navigate_to_checkout, amount, expected_messa
     assert page.locator('.error-message').is_visible()
     assert page.locator('.error-message').inner_text() == expected_message
     log_event("User Experience Failure", {"amount": amount, "message": expected_message, "timestamp": datetime.now()})
+
+# Visual Regression Test for Error Messages
+@pytest.mark.parametrize('amount, expected_error', [
+    (-1, 'Invalid amount'),
+])
+def test_visual_error_messages(navigate_to_checkout, amount, expected_error):
+    page = navigate_to_checkout
+    page.fill('[aria-label="Payment amount"]', str(amount))
+    page.click('button[type="submit"]')
+    page.wait_for_selector('.error-message')
+    page.screenshot(path='screenshots/error_message.png')  # Capture error message screenshot
+
+# Visual Regression Test for Success Messages
+@pytest.mark.parametrize('amount', [
+    (100),  # Valid amount
+])
+def test_visual_success_message(navigate_to_checkout, amount):
+    page = navigate_to_checkout
+    page.fill('[aria-label="Payment amount"]', str(amount))
+    page.click('button[type="submit"]')
+    page.wait_for_selector('.payment-success')
+    page.screenshot(path='screenshots/success_message.png')  # Capture success message screenshot
+
+# Visual Regression Test for Button States
+@pytest.mark.parametrize('amount', [
+    (100),  # Valid amount
+])
+def test_visual_button_states(navigate_to_checkout, amount):
+    page = navigate_to_checkout
+    page.fill('[aria-label="Payment amount"]', str(amount))
+    button = page.locator('button[type="submit"]')
+    button.hover()  # Simulate hover state
+    page.screenshot(path='screenshots/button_hover_state.png')  # Capture screenshot
+    button.click()
+    page.screenshot(path='screenshots/button_disabled_state.png')  # Capture after click
+
+# Visual Regression Test for Form Input Fields
+@pytest.mark.parametrize('amount', [
+    ('invalid'),  # Invalid input
+    (100),  # Valid input
+])
+def test_visual_form_input_fields(navigate_to_checkout, amount):
+    page = navigate_to_checkout
+    page.fill('[aria-label="Payment amount"]', str(amount))
+    page.screenshot(path=f'screenshots/form_input_{amount}.png')  # Capture screenshot
