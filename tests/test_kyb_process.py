@@ -1,6 +1,7 @@
 import pytest
 from playwright.sync_api import Page
 import logging
+from datetime import datetime
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
