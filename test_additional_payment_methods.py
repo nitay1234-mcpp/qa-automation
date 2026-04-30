@@ -1,6 +1,7 @@
 import pytest
 import logging
 import random
+import numpy as np
 from unittest.mock import patch
 from payment_gateway import PaymentProcessor
 
@@ -10,14 +11,41 @@ logger = logging.getLogger(__name__)
 
 # Utility function to generate realistic payment amounts
 
-def generate_payment_amount(min_amount=1, max_amount=1000):
-    # Example using a skewed distribution for payment amounts
-    # Most payments are small, fewer are large
-    amount = int(random.expovariate(1/200))  # mean around 200
+def generate_payment_amount(distribution='exponential', min_amount=1, max_amount=1000, **kwargs):
+    """
+    Generate a payment amount based on specified distribution and parameters.
+
+    Args:
+        distribution (str): Type of distribution to use ('exponential', 'normal', 'uniform').
+        min_amount (int): Minimum payment amount.
+        max_amount (int): Maximum payment amount.
+        kwargs: Additional parameters for distributions (mean, std_dev for normal, etc.).
+
+    Returns:
+        int: Generated payment amount bounded by min_amount and max_amount.
+    """
+    amount = min_amount
+    if distribution == 'exponential':
+        mean = kwargs.get('mean', 200)
+        amount = int(np.random.exponential(scale=mean))
+    elif distribution == 'normal':
+        mean = kwargs.get('mean', 200)
+        std_dev = kwargs.get('std_dev', 50)
+        amount = int(np.random.normal(loc=mean, scale=std_dev))
+    elif distribution == 'uniform':
+        amount = int(np.random.uniform(low=min_amount, high=max_amount))
+    else:
+        logger.warning(f"Unknown distribution '{distribution}', defaulting to min_amount")
+        amount = min_amount
+
+    # Enforce bounds
     if amount < min_amount:
         amount = min_amount
     if amount > max_amount:
         amount = max_amount
+
+    # Apply rounding to nearest integer (could be adapted for currency units)
+    amount = int(round(amount))
     return amount
 
 class TestAdditionalPaymentMethods:
@@ -33,13 +61,33 @@ class TestAdditionalPaymentMethods:
     ])
     @patch.object(PaymentProcessor, 'process_payment')
     def test_various_payment_methods(self, mock_process_payment, payment_method, expected_status):
-        amount = generate_payment_amount()
+        # Assign distributions based on payment method type
+        distribution = 'exponential'
+        max_amount = 1000
+        if payment_method['type'] == 'gift_card':
+            distribution = 'uniform'
+            max_amount = 100
+        elif payment_method['type'] == 'bank_transfer':
+            distribution = 'normal'
+            max_amount = 5000
+
+        amount = generate_payment_amount(distribution=distribution, min_amount=1, max_amount=max_amount)
         logger.info(f"Testing payment method: {payment_method} for amount: {amount}")
         mock_process_payment.return_value = {'status': expected_status}
         processor = PaymentProcessor()
         response = processor.process_payment(amount=amount, card_info=payment_method)
         logger.debug(f"Response: {response}")
         assert response['status'] == expected_status, f"Expected {expected_status} for {payment_method}. Got {response['status']}"
+
+    @pytest.mark.parametrize("edge_amount", [1, 1000, 5000])
+    @patch.object(PaymentProcessor, 'process_payment')
+    def test_payment_amount_edge_cases(self, mock_process_payment, edge_amount):
+        logger.info(f"Testing edge case payment amount: {edge_amount}")
+        mock_process_payment.return_value = {'status': 'success'}
+        processor = PaymentProcessor()
+        response = processor.process_payment(amount=edge_amount, card_info={'type': 'digital_wallet', 'provider': 'PayPal', 'account_id': 'edgecase'})
+        logger.debug(f"Response: {response}")
+        assert response['status'] == 'success', "Expected success status for edge amount"
 
 class TestTimeoutScenarios:
 
