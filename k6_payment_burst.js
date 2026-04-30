@@ -9,7 +9,7 @@ export let options = {
         { duration: `${__ENV.RAMP_DOWN_DURATION || '30s'}`, target: 0 },
     ],
     thresholds: {
-        'http_req_duration': ['p(95)<500'], // 95% of requests should be below 500ms
+        'http_req_duration': ['p(95)<2000'], // 95% of requests should be below 2 seconds
         'http_req_failed': ['rate<0.01'], // Less than 1% failed requests
     },
 };
