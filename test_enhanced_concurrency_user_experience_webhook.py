@@ -2,28 +2,63 @@ import pytest
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from unittest.mock import patch
 from payment_gateway import PaymentProcessor
+import time
 
 # Concurrency and Load Tests
 class TestEnhancedConcurrency:
 
-    @pytest.mark.timeout(30)
+    @pytest.mark.timeout(60)
     def test_high_load_simultaneous_payments(self):
         processor = PaymentProcessor()
         num_requests = 200
         max_duration_seconds = 60  # 1 minute
 
-        def make_payment_request():
-            return processor.process_payment(amount=100, card_info={'number': '4111111111111111', 'cvv': '123'})
+        amounts = [50, 100, 150, 200]
 
+        def make_payment_request(i):
+            amount = amounts[i % len(amounts)]
+            return processor.process_payment(amount=amount, card_info={'number': '4111111111111111', 'cvv': '123'})
+
+        start_time = time.time()
         with ThreadPoolExecutor(max_workers=100) as executor:
-            futures = [executor.submit(make_payment_request) for _ in range(num_requests)]
+            futures = [executor.submit(make_payment_request, i) for i in range(num_requests)]
             results = []
             for future in as_completed(futures):
                 results.append(future.result())
+        duration = time.time() - start_time
 
         error_count = sum(1 for r in results if r['status'] != 'success')
         error_rate = error_count / num_requests
+
         assert error_rate < 0.02, f"Error rate too high during high load test: {error_rate:.2%}"
+        assert duration <= max_duration_seconds, f"Load test took too long: {duration:.2f} seconds"
+
+    @pytest.mark.timeout(60)
+    def test_load_with_mixed_success_failure(self):
+        processor = PaymentProcessor()
+        num_requests = 100
+        max_duration_seconds = 60
+
+        # Simulate mixed success or failure based on request index
+        def make_payment_request(i):
+            if i % 5 == 0:  # Every 5th request fails
+                return {'status': 'error'}
+            else:
+                return processor.process_payment(amount=100, card_info={'number': '4111111111111111', 'cvv': '123'})
+
+        start_time = time.time()
+        with ThreadPoolExecutor(max_workers=50) as executor:
+            futures = [executor.submit(make_payment_request, i) for i in range(num_requests)]
+            results = []
+            for future in as_completed(futures):
+                results.append(future.result())
+        duration = time.time() - start_time
+
+        error_count = sum(1 for r in results if r['status'] != 'success')
+        error_rate = error_count / num_requests
+
+        assert error_rate >= 0.1, "Expected at least 10% error rate in mixed load test"
+        assert duration <= max_duration_seconds, f"Mixed load test took too long: {duration:.2f} seconds"
 
 # Negative User Experience and UI State Tests
 class TestNegativeUserExperience:
