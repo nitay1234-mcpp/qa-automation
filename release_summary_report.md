@@ -37,8 +37,23 @@ Based on the recent commits in the qa-automation repository, the following is a 
 
 ### Release Readiness
 - [x] Confirm all tests are integrated into the CI/CD pipeline.
-- [x] Ensure no critical or high-severity bugs are open.
+- [ ] Ensure no critical or high-severity bugs are open. (See open issues below)
 - [x] Validate that the branch is up to date with the main branch.
+
+### Open Issues to Address Before Release
+
+Priority | Issue Number | Title
+---|---|---
+High | #459 | Add Tests for 500 Internal Server Error Handling in Payment Processing
+Medium | #453 | Quarantine flaky tests related to payment timeout and rapid attempts
+Medium | #455 | Quarantine flaky test: test_webhook_handling in test_payment_processing.py
+Medium | #456 | Quarantine flaky test: test_multiple_payment_attempts in test_payment_processing.py
+Medium | #457 | Quarantine flaky test: test_webhook_variations in test_payment_processing.py
+Low | #447 | Update Documentation for Webhook Retry Enhancements
+Low | #448 | Implement Performance Monitoring for Webhook Retry Process
+Low | #449 | Implement Advanced Retry Mechanisms for Webhook Retry
+Low | #450 | Enhance Logging Requirements for Webhook Retry Mechanism
+Low | #451 | Establish Comprehensive Testing Procedures for Webhook Retry Enhancements
 
 ## Additional Recommendations
 
