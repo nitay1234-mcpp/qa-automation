@@ -4,6 +4,7 @@ import random
 import numpy as np
 from unittest.mock import patch
 from payment_gateway import PaymentProcessor
+import scipy.stats
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -11,33 +12,51 @@ logger = logging.getLogger(__name__)
 
 # Utility function to generate realistic payment amounts
 
-def generate_payment_amount(distribution='normal', min_amount=1, max_amount=10000, **kwargs):
+def generate_payment_amount(distribution='normal', min_amount=1, max_amount=10000, include_edge_cases=False, custom_distribution=None, **kwargs):
     """
     Generate a payment amount based on specified distribution and parameters.
 
     Args:
-        distribution (str): Type of distribution to use ('exponential', 'normal', 'uniform').
+        distribution (str): Type of distribution to use ('exponential', 'normal', 'uniform', 'beta', 'lognormal').
         min_amount (int): Minimum payment amount.
         max_amount (int): Maximum payment amount.
+        include_edge_cases (bool): Whether to include edge case values.
+        custom_distribution (callable): User-defined function to generate amount.
         kwargs: Additional parameters for distributions (mean, std_dev for normal, etc.).
 
     Returns:
         int: Generated payment amount bounded by min_amount and max_amount.
     """
-    amount = min_amount
+    edge_cases = [min_amount, max_amount, 0, int(min_amount * 0.99), int(max_amount * 1.01)]
     
-    if distribution == 'exponential':
-        mean = kwargs.get('mean', 200)
-        amount = int(np.random.exponential(scale=mean))
-    elif distribution == 'normal':
-        mean = kwargs.get('mean', 200)
-        std_dev = kwargs.get('std_dev', 100)
-        amount = int(np.random.normal(loc=mean, scale=std_dev))
-    elif distribution == 'uniform':
-        amount = int(np.random.uniform(low=min_amount, high=max_amount))
+    if include_edge_cases:
+        # Randomly return one of the edge cases
+        amount = random.choice(edge_cases)
+    elif custom_distribution:
+        amount = custom_distribution()
     else:
-        logger.warning(f"Unknown distribution '{distribution}', defaulting to min_amount")
         amount = min_amount
+        if distribution == 'exponential':
+            mean = kwargs.get('mean', 200)
+            amount = int(np.random.exponential(scale=mean))
+        elif distribution == 'normal':
+            mean = kwargs.get('mean', 200)
+            std_dev = kwargs.get('std_dev', 100)
+            amount = int(np.random.normal(loc=mean, scale=std_dev))
+        elif distribution == 'uniform':
+            amount = int(np.random.uniform(low=min_amount, high=max_amount))
+        elif distribution == 'beta':
+            alpha = kwargs.get('alpha', 2)
+            beta_param = kwargs.get('beta', 5)
+            beta_sample = scipy.stats.beta.rvs(alpha, beta_param)
+            amount = int(min_amount + beta_sample * (max_amount - min_amount))
+        elif distribution == 'lognormal':
+            mean = kwargs.get('mean', 3)
+            sigma = kwargs.get('sigma', 1)
+            amount = int(np.random.lognormal(mean, sigma))
+        else:
+            logger.warning(f"Unknown distribution '{distribution}', defaulting to min_amount")
+            amount = min_amount
 
     # Enforce bounds
     if amount < min_amount:
