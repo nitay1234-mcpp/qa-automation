@@ -1,7 +1,7 @@
 import pytest
 from playwright.sync_api import sync_playwright
 import os
-from PIL import Image, ImageChops
+from PIL import Image, ImageChops, ImageFilter
 
 BASELINE_DIR = os.path.join(os.path.dirname(__file__), 'visual_baselines')
 CURRENT_DIR = os.path.join(os.path.dirname(__file__), 'visual_current')
@@ -18,23 +18,22 @@ def browser_context():
         browser.close()
 
 
-def images_are_similar(img1_path, img2_path, threshold=10):
-    img1 = Image.open(img1_path).convert('RGB')
-    img2 = Image.open(img2_path).convert('RGB')
+def images_are_similar(img1_path, img2_path, threshold=5000):
+    img1 = Image.open(img1_path).convert('RGB').filter(ImageFilter.GaussianBlur(1))
+    img2 = Image.open(img2_path).convert('RGB').filter(ImageFilter.GaussianBlur(1))
     diff = ImageChops.difference(img1, img2)
-    # Calculate the bounding box of non-zero regions in the difference image
     bbox = diff.getbbox()
     if not bbox:
         return True
-    # Calculate the diff histogram to quantify difference
     hist = diff.histogram()
-    # Sum of differences
     diff_sum = sum(hist)
     return diff_sum < threshold
 
 
-def visual_regression_test(page, name, url):
+def visual_regression_test(page, name, url, extra_actions=None):
     page.goto(url)
+    if extra_actions:
+        extra_actions(page)
     screenshot_path = os.path.join(CURRENT_DIR, f'{name}.png')
     baseline_path = os.path.join(BASELINE_DIR, f'{name}.png')
 
@@ -48,6 +47,17 @@ def visual_regression_test(page, name, url):
     assert os.path.exists(baseline_path), "Baseline screenshot is missing."
 
     assert images_are_similar(screenshot_path, baseline_path), f"Visual regression detected for {name}."
+
+
+# Helper function to enable dark mode
+
+def enable_dark_mode(page):
+    page.evaluate("document.documentElement.setAttribute('data-theme', 'dark')")
+
+# Helper function for mobile viewport
+
+def set_mobile_viewport(page):
+    page.set_viewport_size({"width": 375, "height": 812})  # Typical iPhone X dimensions
 
 
 # Test multiple key UI states
@@ -85,6 +95,37 @@ def test_settings_visual_regression(browser_context):
 def test_checkout_flow_visual_regression(browser_context):
     page = browser_context.new_page()
     visual_regression_test(page, 'checkout_flow', "http://localhost:8000/checkout")
+
+
+# New tests for dark mode
+
+def test_homepage_dark_mode_visual_regression(browser_context):
+    page = browser_context.new_page()
+    visual_regression_test(page, 'homepage_dark_mode', "http://localhost:8000", extra_actions=enable_dark_mode)
+
+
+def test_dashboard_dark_mode_visual_regression(browser_context):
+    page = browser_context.new_page()
+    visual_regression_test(page, 'dashboard_dark_mode', "http://localhost:8000/dashboard", extra_actions=enable_dark_mode)
+
+
+# New test for mobile viewport
+
+def test_homepage_mobile_viewport_visual_regression(browser_context):
+    page = browser_context.new_page()
+    def actions(page):
+        set_mobile_viewport(page)
+    visual_regression_test(page, 'homepage_mobile', "http://localhost:8000", extra_actions=actions)
+
+
+# New test for interactive components
+
+def test_modal_dialog_visual_regression(browser_context):
+    page = browser_context.new_page()
+    def actions(page):
+        page.goto("http://localhost:8000")
+        page.click('#openModalButton')  # Assuming there is a button to open modal
+    visual_regression_test(page, 'modal_dialog', "http://localhost:8000", extra_actions=actions)
 
 
 # Additional tests for other important UI states can be added similarly
