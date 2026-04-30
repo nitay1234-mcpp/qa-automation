@@ -1,5 +1,7 @@
 import pytest
 import logging
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from payment_gateway import PaymentProcessor
 
 # Set up logging
@@ -18,25 +20,73 @@ class TestPaymentProcessing:
     def test_payment_processing(self, amount, card_info, expected_status):
         logger.info(f"Processing payment for amount: {amount} with card_info: {card_info}")
         processor = PaymentProcessor()
+        start_time = time.time()
         response = processor.process_payment(amount=amount, card_info=card_info)
-        logger.debug(f"Received response: {response}")
+        duration = time.time() - start_time
+        logger.debug(f"Received response: {response} in {duration:.2f} seconds")
         assert response['status'] == expected_status, f"Expected {expected_status} for {card_info}. Got {response['status']}"
+        # SLA: 95% of requests within 2 seconds (relaxed here for single test)
+        assert duration <= 2, f"Payment processing took too long: {duration:.2f} seconds"
 
     @pytest.mark.timeout(10)
     @pytest.mark.flaky(reruns=3, reruns_delay=2)
     def test_webhook_handling(self):
         logger.info("Testing webhook handling.")
         processor = PaymentProcessor()
-        webhook_data = {'event': 'payment_success', 'data': {'amount': 100}}  
+
+        # Measure processing time for webhook
+        webhook_data = {'event': 'payment_success', 'data': {'amount': 100}}
+        start_time = time.time()
         response = processor.handle_webhook(webhook_data)
-        logger.debug(f"Webhook response: {response}")
+        duration = time.time() - start_time
+        logger.debug(f"Webhook response: {response} in {duration:.2f} seconds")
         assert response['status'] == 'processed', "Expected 'processed' status for valid webhook"
-        
+        assert duration <= 1, f"Webhook processing took too long: {duration:.2f} seconds"
+
         # Simulate an invalid webhook
         webhook_data = {'event': 'invalid_event'}
         response = processor.handle_webhook(webhook_data)
         logger.debug(f"Invalid webhook response: {response}")
         assert response['status'] == 'error', "Expected 'error' status for invalid webhook"
+
+    def test_timeout_handling(self):
+        logger.info("Testing timeout handling for payment processing.")
+        processor = PaymentProcessor()
+        # Simulate a timeout scenario (mock or simulate network timeout)
+        # Assuming process_payment returns {'status': 'timeout', 'http_code': 408} on timeout
+        response = processor.process_payment(amount=100, card_info={'number': '4111111111111111', 'cvv': '123'}, simulate_timeout=True)
+        logger.debug(f"Timeout handling response: {response}")
+        assert response.get('http_code') == 408, "Expected HTTP 408 status code for timeout"
+        assert response['status'] == 'timeout', "Expected 'timeout' status for timeout scenario"
+
+    def test_load_throughput(self):
+        logger.info("Testing load throughput for payment processing.")
+        processor = PaymentProcessor()
+        num_requests = 1000
+        max_duration_seconds = 60  # 1 minute
+
+        def make_payment_request():
+            return processor.process_payment(amount=100, card_info={'number': '4111111111111111', 'cvv': '123'})
+
+        start_time = time.time()
+        with ThreadPoolExecutor(max_workers=50) as executor:
+            futures = [executor.submit(make_payment_request) for _ in range(num_requests)]
+            results = []
+            for future in as_completed(futures):
+                results.append(future.result())
+        duration = time.time() - start_time
+        logger.debug(f"Processed {num_requests} payment requests in {duration:.2f} seconds")
+
+        # Assert throughput SLA
+        assert duration <= max_duration_seconds, f"Throughput SLA not met: {duration:.2f} seconds"
+
+        # Assert error rate < 1%
+        error_count = sum(1 for r in results if r['status'] != 'success')
+        error_rate = error_count / num_requests
+        logger.info(f"Error rate during load test: {error_rate:.2%}")
+        assert error_rate < 0.01, f"Error rate too high during load test: {error_rate:.2%}"
+
+    # Existing tests below unchanged...
 
     def test_edge_cases_payment_methods(self):
         logger.info("Testing edge cases for payment methods.")
@@ -50,7 +100,7 @@ class TestPaymentProcessing:
         response = processor.process_payment(amount=100, card_info={'number': '5500000000000004', 'cvv': '123'})
         logger.debug(f"Not accepted card response: {response}")
         assert response['status'] == 'payment_method_not_accepted', "Expected 'payment_method_not_accepted' status for non-accepted card"
-    
+
     @pytest.mark.parametrize("amount, card_info, expected_status", [
         (100, {'number': '4111111111111111', 'cvv': '123'}, 'success'),
         (100, {'number': '1234567890123456', 'cvv': '123'}, 'fraud_detected'),
