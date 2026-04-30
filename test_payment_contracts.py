@@ -64,3 +64,27 @@ class TestPaymentContract:
         # Ensure no unexpected keys are present
         expected_keys = {'status', 'code'}
         assert set(response.keys()) == expected_keys, f"Response keys mismatch. Expected {expected_keys}, got {set(response.keys())}"
+
+    @patch.object(PaymentProcessor, 'delete_payment')
+    @pytest.mark.parametrize("payment_id, mock_return, expected_status", [
+        ("123", {'status': 'deleted'}, 'deleted'),
+        ("456", {'status': 'not_found'}, 'not_found'),
+        ("789", {'status': 'unauthorized'}, 'unauthorized')
+    ])
+    def test_delete_payment_contract(self, mock_delete_payment, payment_id, mock_return, expected_status):
+        """
+        Contract test for the DELETE /payments/{id} endpoint.
+
+        This test mocks the delete_payment method of PaymentProcessor to simulate:
+        - Successful deletion
+        - Payment not found
+        - Unauthorized deletion
+
+        It asserts that the response status conforms to the expected contract.
+        """
+        logger.info(f"Testing delete payment contract for payment_id: {payment_id}")
+        mock_delete_payment.return_value = mock_return
+        processor = PaymentProcessor()
+        response = processor.delete_payment(payment_id)
+        logger.debug(f"Delete payment response: {response}")
+        assert response['status'] == expected_status, f"Expected status '{expected_status}' for payment_id {payment_id}, got {response['status']}"
