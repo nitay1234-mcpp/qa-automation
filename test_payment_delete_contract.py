@@ -48,5 +48,9 @@ class TestDeletePaymentContract(unittest.TestCase):
         self.assertFalse(result_request.errors, f"Request validation errors: {result_request.errors}")
         self.assertFalse(result_response.errors, f"Response validation errors: {result_response.errors}")
 
+        # Additional assertions for successful scenario
+        self.assertEqual(response.status_code, 204, "Expected HTTP status code 204 No Content for successful deletion")
+        self.assertIsNone(response.content or None, "Expected empty response body for successful deletion")
+
 if __name__ == '__main__':
     unittest.main()
