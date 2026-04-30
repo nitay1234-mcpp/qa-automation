@@ -44,3 +44,16 @@ class TestPaymentContract:
         response = processor.handle_webhook(webhook_data)
         logger.debug(f"Invalid webhook response: {response}")
         assert response['status'] == 'error', "Expected 'error' status for invalid webhook"
+
+    @patch.object(PaymentProcessor, 'process_payment')
+    def test_payment_processing_internal_server_error(self, mock_process_payment):
+        """
+        Test to ensure the payment processor correctly handles a 500 Internal Server Error.
+        """
+        logger.info("Testing payment processing handling 500 Internal Server Error.")
+        mock_process_payment.return_value = {'status': 'internal_server_error', 'code': 500}
+        processor = PaymentProcessor()
+        response = processor.process_payment(amount=100, card_info={'number': '4111111111111111', 'cvv': '123'})
+        logger.debug(f"Received response for 500 error test: {response}")
+        assert response['status'] == 'internal_server_error', "Expected 'internal_server_error' status for 500 error"
+        assert response['code'] == 500, "Expected error code 500 for internal server error"
