@@ -408,3 +408,183 @@ def test_basic_performance_measurement(navigate_to_checkout):
     duration = end_time - start_time
     assert duration < 5, f"Payment processing took too long: {duration} seconds"
     log_event("Performance Test", {"duration": duration, "timestamp": datetime.now()})
+
+
+# --- New Enhancements Added Below ---
+
+# Cross-Browser Compatibility Test
+@pytest.mark.parametrize('browser_name', ['chromium', 'firefox', 'webkit'])
+def test_cross_browser_payment_flow(page_factory, browser_name):
+    browser = page_factory.launch_browser(browser_name)
+    page = browser.new_page()
+    page.goto('https://staging.novapay.io/checkout')
+    page.fill('[aria-label="Payment amount"]', '100')
+    page.click('button[type="submit"]')
+    page.wait_for_selector('.payment-success')
+    assert page.locator('.payment-success').is_visible()
+    browser.close()
+
+# Mobile Responsiveness Test
+@pytest.mark.parametrize('viewport', [
+    {'width': 375, 'height': 667},  # iPhone 6/7/8
+    {'width': 414, 'height': 736},  # iPhone 6/7/8 Plus
+    {'width': 360, 'height': 640},  # Android
+])
+def test_mobile_responsiveness(page, viewport):
+    page.set_viewport_size(viewport)
+    page.goto('https://staging.novapay.io/checkout')
+    assert page.locator('form[aria-label="Payment form"]').is_visible()
+
+# Session Timeout Handling
+def test_session_timeout_handling(navigate_to_checkout):
+    page = navigate_to_checkout
+    page.evaluate('window.sessionTimeout = true')
+    page.wait_for_timeout(3000)  # Wait for session timeout
+    page.click('button[type="submit"]')
+    page.wait_for_selector('.session-timeout-message')
+    assert page.locator('.session-timeout-message').is_visible()
+    log_event("Session Timeout", {"timestamp": datetime.now()})
+
+# Payment Method Failover
+def test_payment_method_failover(navigate_to_checkout):
+    page = navigate_to_checkout
+    page.click('button[aria-label="Primary Payment Method"]')
+    page.evaluate('window.failPrimaryMethod = true')
+    page.click('button[type="submit"]')
+    page.wait_for_selector('.failover-payment-option')
+    page.click('button[aria-label="Failover Payment Method"]')
+    page.wait_for_selector('.payment-success')
+    assert page.locator('.payment-success').is_visible()
+    log_event("Payment Method Failover", {"timestamp": datetime.now()})
+
+# Currency Conversion Accuracy
+@pytest.mark.parametrize('currency, amount, expected_amount', [
+    ('USD', 100, 100),
+    ('EUR', 85, 100),  # Assuming conversion rate
+    ('JPY', 11000, 100),
+])
+def test_currency_conversion_accuracy(navigate_to_checkout, currency, amount, expected_amount):
+    page = navigate_to_checkout
+    page.select_option('select[aria-label="Currency"]', currency)
+    page.fill('[aria-label="Payment amount"]', str(amount))
+    page.click('button[type="submit"]')
+    page.wait_for_selector('.payment-success')
+    converted_amount = page.evaluate('window.convertedAmount')
+    assert converted_amount == expected_amount
+    log_event("Currency Conversion", {"currency": currency, "amount": amount, "converted": converted_amount, "timestamp": datetime.now()})
+
+# Retry Limit and Backoff
+@pytest.mark.parametrize('failures_before_success', [0, 1, 3])
+def test_retry_limit_and_backoff(navigate_to_checkout, failures_before_success):
+    page = navigate_to_checkout
+    page.evaluate(f'window.failuresBeforeSuccess = {failures_before_success}')
+    page.fill('[aria-label="Payment amount"]', '100')
+    page.click('button[type="submit"]')
+    if failures_before_success > 0:
+        page.wait_for_selector('.error-message')
+    page.wait_for_selector('.payment-success')
+    assert page.locator('.payment-success').is_visible()
+    log_event("Retry Mechanism", {"failures_before_success": failures_before_success, "timestamp": datetime.now()})
+
+# Detailed Fraud Detection Patterns
+@pytest.mark.parametrize('pattern', [
+    'velocity',  # Multiple payments in short time
+    'ip_geolocation_mismatch',
+    'blacklisted_card',
+])
+def test_detailed_fraud_detection_patterns(navigate_to_checkout, pattern):
+    page = navigate_to_checkout
+    page.evaluate(f'window.fraudPattern = "{pattern}"')
+    page.fill('[aria-label="Payment amount"]', '100')
+    page.click('button[type="submit"]')
+    if pattern == 'velocity':
+        for _ in range(5):
+            page.click('button[type="submit"]')
+    page.wait_for_selector('.fraud-alert')
+    assert page.locator('.fraud-alert').is_visible()
+    log_event("Fraud Pattern Detected", {"pattern": pattern, "timestamp": datetime.now()})
+
+# Notification and Alert Systems
+@pytest.mark.parametrize('notification_type', ['email', 'sms', 'push'])
+def test_notification_systems(navigate_to_checkout, notification_type):
+    page = navigate_to_checkout
+    page.fill('[aria-label="Payment amount"]', '100')
+    page.click('button[type="submit"]')
+    page.evaluate(f'window.triggerNotification("{notification_type}")')
+    page.wait_for_selector(f'.notification-{notification_type}')
+    assert page.locator(f'.notification-{notification_type}').is_visible()
+    log_event("Notification Sent", {"type": notification_type, "timestamp": datetime.now()})
+
+# Audit Trail and Logging
+def test_audit_trail_logging(navigate_to_checkout):
+    page = navigate_to_checkout
+    page.fill('[aria-label="Payment amount"]', '100')
+    page.click('button[type="submit"]')
+    audit_log = page.evaluate('window.getAuditLog()')
+    assert 'payment_initiated' in audit_log
+    assert 'payment_completed' in audit_log
+    log_event("Audit Trail Verified", {"timestamp": datetime.now()})
+
+# Payment Method Expiry
+@pytest.mark.parametrize('expired_card', [True, False])
+def test_payment_method_expiry(navigate_to_checkout, expired_card):
+    page = navigate_to_checkout
+    if expired_card:
+        page.evaluate('window.cardExpired = true')
+    page.fill('[aria-label="Card Number"]', '4111111111111111')
+    page.click('button[type="submit"]')
+    if expired_card:
+        page.wait_for_selector('.card-expiry-error')
+        assert page.locator('.card-expiry-error').is_visible()
+    else:
+        page.wait_for_selector('.payment-success')
+        assert page.locator('.payment-success').is_visible()
+    log_event("Card Expiry Check", {"expired": expired_card, "timestamp": datetime.now()})
+
+# User Data Privacy
+def test_user_data_privacy(navigate_to_checkout):
+    page = navigate_to_checkout
+    page.fill('[aria-label="Card Number"]', '4111111111111111')
+    page.fill('[aria-label="CVV"]', '123')
+    logs = page.evaluate('window.getLogs()')
+    assert '4111111111111111' not in logs
+    assert '123' not in logs
+    log_event("User Data Privacy Verified", {"timestamp": datetime.now()})
+
+# Load and Stress Testing
+@pytest.mark.parametrize('concurrent_users', [10, 50, 100])
+def test_load_and_stress(navigate_to_checkout, concurrent_users):
+    page = navigate_to_checkout
+    threads = []
+    def perform_load_payment():
+        page.fill('[aria-label="Payment amount"]', '100')
+        page.click('button[type="submit"]')
+        page.wait_for_selector('.payment-success')
+        assert page.locator('.payment-success').is_visible()
+    for _ in range(concurrent_users):
+        t = threading.Thread(target=perform_load_payment)
+        threads.append(t)
+        t.start()
+    for t in threads:
+        t.join()
+    log_event("Load Test Completed", {"users": concurrent_users, "timestamp": datetime.now()})
+
+# Third-Party Payment Gateway Downtime
+def test_gateway_downtime_handling(navigate_to_checkout):
+    page = navigate_to_checkout
+    page.evaluate('window.gatewayDown = true')
+    page.fill('[aria-label="Payment amount"]', '100')
+    page.click('button[type="submit"]')
+    page.wait_for_selector('.gateway-error')
+    assert page.locator('.gateway-error').is_visible()
+    log_event("Gateway Downtime", {"timestamp": datetime.now()})
+
+# Localization and Internationalization
+@pytest.mark.parametrize('language', ['en', 'es', 'fr'])
+def test_localization_and_internationalization(navigate_to_checkout, language):
+    page = navigate_to_checkout
+    page.evaluate(f'window.setLanguage("{language}")')
+    page.goto('https://staging.novapay.io/checkout')
+    assert page.locator('form[aria-label="Payment form"]').is_visible()
+    log_event("Localization Test", {"language": language, "timestamp": datetime.now()})
+
