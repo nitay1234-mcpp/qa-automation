@@ -140,7 +140,7 @@ class TestPaymentProcessing:
         assert response['status'] == 'error', "Expected 'error' status for invalid webhook"
 
     @pytest.mark.parametrize("card_info, expected_status", [
-        ({'number': '4111-1111-1111-1111', 'cvv': '123'}, 'error'),  # Invalid card format
+        ({'number': '4111111111111111', 'cvv': '123'}, 'error'),  # Invalid card format
         ({'number': '5500000000000004', 'cvv': '123'}, 'payment_method_not_accepted'),  # Not accepted card
         ({'number': '4111A1111111111', 'cvv': '123'}, 'error')  # Invalid format
     ])
