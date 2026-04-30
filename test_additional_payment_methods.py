@@ -17,7 +17,7 @@ def generate_payment_amount(distribution='normal', min_amount=1, max_amount=1000
     Generate a payment amount based on specified distribution and parameters.
 
     Args:
-        distribution (str): Type of distribution to use ('exponential', 'normal', 'uniform', 'beta', 'lognormal').
+        distribution (str): Type of distribution to use ('exponential', 'normal', 'uniform', 'beta', 'lognormal', 'custom').
         min_amount (int): Minimum payment amount.
         max_amount (int): Maximum payment amount.
         include_edge_cases (bool): Whether to include edge case values.
@@ -102,6 +102,14 @@ class TestAdditionalPaymentMethods:
             distribution = 'normal'
             max_amount = 5000
             dist_params = {'mean': 1500, 'std_dev': 750}
+        elif payment_method['type'] == 'digital_wallet' and payment_method['provider'] == 'PayPal':
+            distribution = 'lognormal'
+            max_amount = 8000
+            dist_params = {'mean': 2.5, 'sigma': 0.75}
+        elif payment_method['type'] == 'digital_wallet' and payment_method['provider'] == 'Apple Pay':
+            distribution = 'beta'
+            max_amount = 9000
+            dist_params = {'alpha': 2, 'beta': 3}
 
         amount = generate_payment_amount(distribution=distribution, min_amount=1, max_amount=max_amount, **dist_params)
         
