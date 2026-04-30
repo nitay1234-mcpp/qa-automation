@@ -1,5 +1,6 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
+import { normal, uniform } from 'k6/x/random'; // Hypothetical external library for distributions
 
 // Load test options with stages and thresholds
 export let options = {
@@ -24,24 +25,22 @@ function randomChoice(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
 }
 
-// Generate payment amount based on refined distributions
+// Generate payment amount using sophisticated distributions and edge cases
 function generateAmount() {
-    const tiers = [
-        { prob: 0.5, min: 10, max: 50 },
-        { prob: 0.3, min: 51, max: 150 },
-        { prob: 0.15, min: 151, max: 500 },
-        { prob: 0.05, min: 501, max: 1000 },
-    ];
-    const rand = Math.random();
-    let cumulativeProb = 0;
-    for (const tier of tiers) {
-        cumulativeProb += tier.prob;
-        if (rand < cumulativeProb) {
-            return randomInt(tier.min, tier.max);
-        }
+    // Define edge cases explicitly
+    const edgeCases = [0, 1, 999999]; // zero, minimal, and very large amounts
+    if (Math.random() < 0.05) { // 5% chance to use an edge case
+        return randomChoice(edgeCases);
     }
-    // Default fallback
-    return randomInt(10, 100);
+
+    // Use a normal distribution centered around 100 with stddev 50
+    let amount = Math.round(normal(100, 50));
+
+    // Clamp amount within business rules
+    if (amount < 10) amount = 10;
+    if (amount > 1000) amount = 1000;
+
+    return amount;
 }
 
 // Generate randomized payment data for each request
@@ -55,7 +54,7 @@ function generatePaymentData() {
 
     const paymentMethod = randomChoice(paymentMethods);
     const currency = randomChoice(currencies);
-    const amount = generateAmount(); // Use refined distribution
+    const amount = generateAmount(); // Use improved synthetic distribution
 
     let cardNumber = '';
     if (paymentMethod === 'paypal') {
