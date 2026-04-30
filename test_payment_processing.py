@@ -175,3 +175,59 @@ class TestPaymentProcessing:
         response = processor.process_refund(amount=amount, card_info={'number': '4111111111111111', 'cvv': '123'})
         logger.debug(f"Refund response: {response}")
         assert response['status'] == expected_status, f"Expected {expected_status} for refund of {amount}. Got {response['status']}"
+
+    # New test cases for untested endpoints
+    def test_error_scenarios_post_payments(self):
+        logger.info("Testing error scenarios for POST /payments endpoint.")
+        processor = PaymentProcessor()
+
+        # Invalid card details
+        invalid_card = {'number': '0000000000000000', 'cvv': '000'}
+        response = processor.process_payment(amount=100, card_info=invalid_card)
+        logger.debug(f"Response for invalid card details: {response}")
+        assert response['status'] == 'error', "Expected 'error' status for invalid card details"
+
+        # Missing amount
+        response = processor.process_payment(amount=None, card_info={'number': '4111111111111111', 'cvv': '123'})
+        logger.debug(f"Response for missing amount: {response}")
+        assert response['status'] == 'error', "Expected 'error' status for missing amount"
+
+        # Negative amount
+        response = processor.process_payment(amount=-50, card_info={'number': '4111111111111111', 'cvv': '123'})
+        logger.debug(f"Response for negative amount: {response}")
+        assert response['status'] == 'error', "Expected 'error' status for negative amount"
+
+    def test_get_transactions_pagination_and_filtering(self):
+        logger.info("Testing GET /transactions endpoint for pagination and filtering.")
+        processor = PaymentProcessor()
+
+        # Test pagination
+        response = processor.get_transactions(page=1, page_size=10)
+        logger.debug(f"Transactions page 1: {response}")
+        assert isinstance(response['transactions'], list), "Expected transactions list in response"
+
+        response2 = processor.get_transactions(page=2, page_size=10)
+        logger.debug(f"Transactions page 2: {response2}")
+        assert isinstance(response2['transactions'], list), "Expected transactions list in response"
+        assert response['transactions'] != response2['transactions'], "Expected different transactions on different pages"
+
+        # Test filtering
+        filter_params = {'status': 'completed'}
+        filtered_response = processor.get_transactions(filters=filter_params)
+        logger.debug(f"Filtered transactions: {filtered_response}")
+        for txn in filtered_response['transactions']:
+            assert txn['status'] == 'completed', "Expected only completed transactions in filtered results"
+
+    def test_delete_payments_invalid_payment_id(self):
+        logger.info("Testing DELETE /payments/{id} endpoint for invalid payment IDs.")
+        processor = PaymentProcessor()
+
+        # Non-existent payment ID
+        response = processor.cancel_payment(payment_id='nonexistent123')
+        logger.debug(f"Response for non-existent payment ID: {response}")
+        assert response['status'] == 'error', "Expected 'error' status for non-existent payment ID"
+
+        # Invalid format payment ID
+        response = processor.cancel_payment(payment_id='!@#$%^&*')
+        logger.debug(f"Response for invalid format payment ID: {response}")
+        assert response['status'] == 'error', "Expected 'error' status for invalid payment ID format"
