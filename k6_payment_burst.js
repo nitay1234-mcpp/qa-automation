@@ -24,7 +24,19 @@ function randomChoice(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
 }
 
-// Generate randomized payment data for each request
+// Utility function to generate log-normal distributed amount
+function randomLogNormalAmount(mu, sigma, min, max) {
+    // Using Box-Muller transform to generate standard normal variable
+    let u1 = 1.0 - Math.random();
+    let u2 = 1.0 - Math.random();
+    let standardNormal = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+    let logNormal = Math.exp(mu + sigma * standardNormal);
+    // Clamp the value between min and max
+    let clamped = Math.min(Math.max(logNormal, min), max);
+    return Math.floor(clamped);
+}
+
+// Generate randomized payment data for each request with realistic amount distribution
 function generatePaymentData() {
     const currencies = ['USD', 'EUR', 'GBP'];
     const paymentMethods = ['credit_card', 'debit_card', 'paypal'];
@@ -35,7 +47,14 @@ function generatePaymentData() {
 
     const paymentMethod = randomChoice(paymentMethods);
     const currency = randomChoice(currencies);
-    const amount = randomInt(10, 500); // Random amount between 10 and 500
+
+    // Parameters for log-normal distribution
+    const mu = 4.0; // Mean of log(amount)
+    const sigma = 0.5; // Standard deviation
+    const minAmount = 10;
+    const maxAmount = 500;
+
+    const amount = randomLogNormalAmount(mu, sigma, minAmount, maxAmount);
 
     let cardNumber = '';
     if (paymentMethod === 'paypal') {
