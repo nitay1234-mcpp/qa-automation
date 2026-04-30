@@ -269,17 +269,33 @@ def test_payment_in_different_currencies(navigate_to_checkout, currency, amount,
         assert page.locator('.payment-success').is_visible()
         log_event("Payment Success", {"currency": currency, "amount": amount, "timestamp": datetime.now()})
 
-# 3. Partial and split payments
- def test_partial_and_split_payments(navigate_to_checkout):
+# 3. Partial and split payments - enhanced edge cases
+@pytest.mark.parametrize('partial_amounts, expected_error', [
+    ([0, 100], 'Invalid partial payment amount'),  # Zero amount in split
+    ([50, -10], 'Invalid partial payment amount'),  # Negative amount in split
+    ([50, 51], 'Total exceeds original amount'),  # Sum exceeds original
+    ([50, 50], None),  # Valid split
+    ([100], None),  # Single payment equal to total
+])
+def test_partial_and_split_payments_edge_cases(navigate_to_checkout, partial_amounts, expected_error):
     page = navigate_to_checkout
-    # Assuming UI allows split payments by multiple methods/amounts
-    page.fill('[aria-label="Payment amount"]', '50')
-    page.click('button[aria-label="Add payment method"]')
-    page.fill('[aria-label="Split payment amount"]', '50')
+    original_total = sum(partial_amounts)
+    page.fill('[aria-label="Payment amount"]', str(original_total))
+    for i, amt in enumerate(partial_amounts):
+        if i > 0:
+            page.click('button[aria-label="Add payment method"]')
+        page.fill(f'[aria-label="Split payment amount {i+1}"]', str(amt))
     page.click('button[type="submit"]')
-    page.wait_for_selector('.payment-success')
-    assert page.locator('.payment-success').is_visible()
-    log_event("Partial/Split Payment Success", {"timestamp": datetime.now()})
+
+    if expected_error:
+        page.wait_for_selector('.error-message')
+        assert page.locator('.error-message').is_visible()
+        assert expected_error in page.locator('.error-message').inner_text()
+        log_event("Partial/Split Payment Error", {"amounts": partial_amounts, "error": expected_error, "timestamp": datetime.now()})
+    else:
+        page.wait_for_selector('.payment-success')
+        assert page.locator('.payment-success').is_visible()
+        log_event("Partial/Split Payment Success", {"amounts": partial_amounts, "timestamp": datetime.now()})
 
 # 4. Payment access by user roles
 @pytest.mark.parametrize('user_role, expected_access', [
