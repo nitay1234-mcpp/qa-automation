@@ -13,11 +13,13 @@ This file contains detailed and stable test cases covering supported payment met
 | TC-012| Validate Payment Failure due to Insufficient Funds | User is logged in and has items in the cart    | 1. Navigate to checkout  <br> 2. Select payment method <br> 3. Use card or account with insufficient funds      | Payment failure message is displayed and payment is not processed |
 | TC-013| Validate Payment Integration with Third-Party Gateway | User is logged in and has items in the cart    | 1. Navigate to checkout  <br> 2. Select payment gateway method <br> 3. Complete payment using third-party gateway | Payment is processed successfully and order confirmation is displayed |
 | TC-014| Validate Refund Process                          | User has completed a payment                     | 1. Navigate to order history  <br> 2. Request a refund for a completed order                                    | Refund is processed successfully and status is updated         |
+| TC-021| Validate Payment Failure with Card Declined Due to Fraud Detection | User is logged in and has items in the cart | 1. Navigate to checkout <br> 2. Enter card details that trigger fraud detection <br> 3. Submit payment | Payment is declined and user is notified about suspected fraud |
+| TC-022| Validate Payment Failure with Expired Card      | User is logged in and has items in the cart    | 1. Navigate to checkout <br> 2. Enter expired card details <br> 3. Submit payment                               | Payment failure message is displayed indicating expired card   |
 
 ---
 
 ## Notes
 - Supported payment methods include PayPal, Credit Card, Discount Codes, and third-party gateways.
 - Success criteria include correct processing, confirmation display, and notification to users.
-- Error handling covers network timeouts, insufficient funds, and payment cancellations.
+- Error handling covers network timeouts, insufficient funds, payment cancellations, and additional edge cases like fraud detection and expired cards.
 - Integration points include third-party payment gateways and refund processing.
