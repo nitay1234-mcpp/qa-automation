@@ -9,5 +9,11 @@
 - **Test Case 3**: Validate behavior when attempting to cancel a payment with a non-existent ID.
 - **Test Case 4**: Validate webhook retry notifications, logging, and monitoring dashboard data accuracy.
 
+### Currency Conversion Validation Test Cases
+- **Test Case 5**: Validate correct currency conversion rates are applied during payment processing.
+- **Test Case 6**: Validate error handling when currency conversion rates are unavailable or outdated.
+- **Test Case 7**: Validate transaction amounts are accurately converted and displayed in user interfaces.
+- **Test Case 8**: Validate currency conversion consistency across different payment methods and currencies.
+
 ### Additional Notes
 - Ensure that all tests are added to the CI/CD pipeline for validation.
