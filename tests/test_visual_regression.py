@@ -30,7 +30,7 @@ def images_are_similar(img1_path, img2_path, threshold=5000):
     return diff_sum < threshold
 
 
-def visual_regression_test(page, name, url, extra_actions=None):
+def visual_regression_test(page, name, url, extra_actions=None, threshold=5000):
     page.goto(url)
     if extra_actions:
         extra_actions(page)
@@ -46,7 +46,7 @@ def visual_regression_test(page, name, url, extra_actions=None):
     assert os.path.exists(screenshot_path), "Screenshot was not created."
     assert os.path.exists(baseline_path), "Baseline screenshot is missing."
 
-    assert images_are_similar(screenshot_path, baseline_path), f"Visual regression detected for {name}."
+    assert images_are_similar(screenshot_path, baseline_path, threshold=threshold), f"Visual regression detected for {name}."
 
 
 # Helper function to enable dark mode
