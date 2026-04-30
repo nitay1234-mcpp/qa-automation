@@ -313,7 +313,9 @@ def test_payment_access_by_user_role(navigate_to_checkout, user_role, expected_a
     log_event("User Role Access", {"role": user_role, "timestamp": datetime.now()})
 
 # 5. Refunds and chargebacks
- def test_refund_and_chargeback_flow(navigate_to_checkout):
+# Test the refund and chargeback flow
+@pytest.mark.parametrize()
+def test_refund_and_chargeback_flow(navigate_to_checkout):
     page = navigate_to_checkout
     page.fill('[aria-label="Payment amount"]', '100')
     page.click('button[type="submit"]')
@@ -326,7 +328,9 @@ def test_payment_access_by_user_role(navigate_to_checkout, user_role, expected_a
     log_event("Refund Processed", {"timestamp": datetime.now()})
 
 # 6. Accessibility checks
- def test_accessibility_of_payment_form(navigate_to_checkout):
+# Ensure accessibility of the payment form
+@pytest.mark.parametrize()
+def test_accessibility_of_payment_form(navigate_to_checkout):
     page = navigate_to_checkout
     assert page.locator('form[aria-label="Payment form"]').is_visible()
     inputs = page.locator('form[aria-label="Payment form"] input')
@@ -335,7 +339,9 @@ def test_payment_access_by_user_role(navigate_to_checkout, user_role, expected_a
     log_event("Accessibility Check", {"timestamp": datetime.now()})
 
 # 7. Retry mechanism
- def test_retry_payment_mechanism(navigate_to_checkout):
+# Test the retry mechanism for failed payments
+@pytest.mark.parametrize()
+def test_retry_payment_mechanism(navigate_to_checkout):
     page = navigate_to_checkout
     page.fill('[aria-label="Payment amount"]', '100')
     page.evaluate('window.failNextPayment = true')
@@ -347,7 +353,9 @@ def test_payment_access_by_user_role(navigate_to_checkout, user_role, expected_a
     log_event("Payment Retry Success", {"timestamp": datetime.now()})
 
 # 8. Integration with payment gateways
- def test_integration_with_gateway(navigate_to_checkout):
+# Test integration with external payment gateways
+@pytest.mark.parametrize()
+def test_integration_with_gateway(navigate_to_checkout):
     page = navigate_to_checkout
     page.fill('[aria-label="Payment amount"]', '100')
     page.click('button[type="submit"]')
@@ -357,7 +365,9 @@ def test_payment_access_by_user_role(navigate_to_checkout, user_role, expected_a
     log_event("Gateway Integration Success", {"timestamp": datetime.now()})
 
 # 9. Enhanced concurrency with errors
- def test_concurrency_with_errors(page: Page):
+# Test concurrency with some payments failing
+@pytest.mark.parametrize()
+def test_concurrency_with_errors(page: Page):
     page.goto('https://staging.novapay.io/checkout')
     results = []
     def perform_payment(amount, should_fail=False):
@@ -385,7 +395,9 @@ def test_payment_access_by_user_role(navigate_to_checkout, user_role, expected_a
     assert any(success for _, success in results), "At least one payment should succeed"
 
 # 10. Basic performance measurement
- def test_basic_performance_measurement(navigate_to_checkout):
+# Measure basic performance of payment processing
+@pytest.mark.parametrize()
+def test_basic_performance_measurement(navigate_to_checkout):
     import time
     page = navigate_to_checkout
     start_time = time.time()
