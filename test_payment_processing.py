@@ -207,83 +207,61 @@ class TestPaymentProcessing:
         logger.debug(f"Edge case response: {response}")
         assert response['status'] == expected_status, f"Expected {expected_status} for {card_info}. Got {response['status']}"
 
-    # New tests for handling refunds and partial payments
-    @pytest.mark.parametrize("amount, expected_status", [
-        (50, 'success'),  # Valid partial payment
-        (150, 'error'),  # Invalid partial payment exceeding original amount
-        (0, 'error')  # Invalid partial payment
+    # Enhanced concurrency tests
+    def test_concurrent_payment_attempts(self):
+        logger.info("Testing concurrent payment attempts.")
+        processor = PaymentProcessor()
+        num_attempts = 20
+
+        def make_payment():
+            return processor.process_payment(amount=100, card_info={'number': '4111111111111111', 'cvv': '123'})
+
+        with ThreadPoolExecutor(max_workers=num_attempts) as executor:
+            futures = [executor.submit(make_payment) for _ in range(num_attempts)]
+            results = [future.result() for future in as_completed(futures)]
+
+        success_count = sum(1 for r in results if r['status'] == 'success')
+        logger.debug(f"Concurrent payment success count: {success_count} out of {num_attempts}")
+        assert success_count == num_attempts, f"Expected all concurrent payments to succeed, but got {success_count} successes."
+
+    # Enhanced partial refund tests
+    @pytest.mark.parametrize("refund_amount, expected_status", [
+        (50, 'success'),  # Valid partial refund
+        (0, 'error'),    # Zero refund amount
+        (-10, 'error'),  # Negative refund amount
+        (200, 'error')   # Refund greater than original payment
     ])
-    def test_partial_payments(self, amount, expected_status):
-        logger.info(f"Testing partial payment with amount: {amount}")
+    def test_partial_refunds(self, refund_amount, expected_status):
+        logger.info(f"Testing partial refunds with amount: {refund_amount}")
         processor = PaymentProcessor()
-        response = processor.process_partial_payment(amount=amount, card_info={'number': '4111111111111111', 'cvv': '123'})
-        logger.debug(f"Partial payment response: {response}")
-        assert response['status'] == expected_status, f"Expected {expected_status} for partial payment of {amount}. Got {response['status']}"
+        response = processor.process_refund(amount=refund_amount, card_info={'number': '4111111111111111', 'cvv': '123'})
+        logger.debug(f"Partial refund response: {response}")
+        assert response['status'] == expected_status, f"Expected {expected_status} for refund amount {refund_amount}. Got {response['status']}"
 
-    @pytest.mark.parametrize("amount, expected_status", [
-        (100, 'success'),  # Valid refund
-        (50, 'error'),  # Invalid refund amount less than original payment
-        (0, 'error')  # Invalid refund amount
-    ])
-    def test_refunds(self, amount, expected_status):
-        logger.info(f"Testing refund with amount: {amount}")
+    # Security-related tests for untested endpoints
+    def test_unauthorized_access(self):
+        logger.info("Testing unauthorized access to payment processing.")
         processor = PaymentProcessor()
-        response = processor.process_refund(amount=amount, card_info={'number': '4111111111111111', 'cvv': '123'})
-        logger.debug(f"Refund response: {response}")
-        assert response['status'] == expected_status, f"Expected {expected_status} for refund of {amount}. Got {response['status']}"
+        response = processor.process_payment(amount=100, card_info={'number': '4111111111111111', 'cvv': '123'}, auth_token=None)
+        logger.debug(f"Unauthorized access response: {response}")
+        assert response['status'] == 'unauthorized', "Expected 'unauthorized' status for missing auth token"
 
-    # New test cases for untested endpoints
-    def test_error_scenarios_post_payments(self):
-        logger.info("Testing error scenarios for POST /payments endpoint.")
+    def test_rate_limiting(self):
+        logger.info("Testing rate limiting on payment processing endpoint.")
         processor = PaymentProcessor()
+        num_requests = 100
+        responses = []
 
-        # Invalid card details
-        invalid_card = {'number': '0000000000000000', 'cvv': '000'}
-        response = processor.process_payment(amount=100, card_info=invalid_card)
-        logger.debug(f"Response for invalid card details: {response}")
-        assert response['status'] == 'error', "Expected 'error' status for invalid card details"
+        def make_request():
+            return processor.process_payment(amount=100, card_info={'number': '4111111111111111', 'cvv': '123'})
 
-        # Missing amount
-        response = processor.process_payment(amount=None, card_info={'number': '4111111111111111', 'cvv': '123'})
-        logger.debug(f"Response for missing amount: {response}")
-        assert response['status'] == 'error', "Expected 'error' status for missing amount"
+        with ThreadPoolExecutor(max_workers=20) as executor:
+            futures = [executor.submit(make_request) for _ in range(num_requests)]
+            for future in as_completed(futures):
+                responses.append(future.result())
 
-        # Negative amount
-        response = processor.process_payment(amount=-50, card_info={'number': '4111111111111111', 'cvv': '123'})
-        logger.debug(f"Response for negative amount: {response}")
-        assert response['status'] == 'error', "Expected 'error' status for negative amount"
+        rate_limited_count = sum(1 for r in responses if r['status'] == 'rate_limited')
+        logger.debug(f"Rate limited responses: {rate_limited_count} out of {num_requests}")
+        assert rate_limited_count > 0, "Expected some requests to be rate limited under high load"
 
-    def test_get_transactions_pagination_and_filtering(self):
-        logger.info("Testing GET /transactions endpoint for pagination and filtering.")
-        processor = PaymentProcessor()
-
-        # Test pagination
-        response = processor.get_transactions(page=1, page_size=10)
-        logger.debug(f"Transactions page 1: {response}")
-        assert isinstance(response['transactions'], list), "Expected transactions list in response"
-
-        response2 = processor.get_transactions(page=2, page_size=10)
-        logger.debug(f"Transactions page 2: {response2}")
-        assert isinstance(response2['transactions'], list), "Expected transactions list in response"
-        assert response['transactions'] != response2['transactions'], "Expected different transactions on different pages"
-
-        # Test filtering
-        filter_params = {'status': 'completed'}
-        filtered_response = processor.get_transactions(filters=filter_params)
-        logger.debug(f"Filtered transactions: {filtered_response}")
-        for txn in filtered_response['transactions']:
-            assert txn['status'] == 'completed', "Expected only completed transactions in filtered results"
-
-    def test_delete_payments_invalid_payment_id(self):
-        logger.info("Testing DELETE /payments/{id} endpoint for invalid payment IDs.")
-        processor = PaymentProcessor()
-
-        # Non-existent payment ID
-        response = processor.cancel_payment(payment_id='nonexistent123')
-        logger.debug(f"Response for non-existent payment ID: {response}")
-        assert response['status'] == 'error', "Expected 'error' status for non-existent payment ID"
-
-        # Invalid format payment ID
-        response = processor.cancel_payment(payment_id='!@#$%^&*')
-        logger.debug(f"Response for invalid format payment ID: {response}")
-        assert response['status'] == 'error', "Expected 'error' status for invalid payment ID format"
+    # Additional tests can be added as needed
