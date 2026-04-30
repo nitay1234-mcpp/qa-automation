@@ -3,14 +3,14 @@ import { check, sleep } from 'k6';
 
 export let options = {
     stages: [
-        { duration: '30s', target: 50 }, // Ramp-up to 50 users
-        { duration: '1m', target: 50 },  // Stay at 50 users
-        { duration: '10s', target: 0 },  // Ramp-down to 0 users
+        { duration: '1m', target: 100 }, // Ramp-up to 100 users
+        { duration: '5m', target: 100 },  // Stay at 100 users
+        { duration: '30s', target: 0 },  // Ramp-down to 0 users
     ],
 };
 
 export default function () {
-    let url = 'https://test-api.example.com/payment';
+    let url = 'https://actual-testing-endpoint.com/payment';
     let payload = JSON.stringify({
         amount: 100,
         currency: 'USD',
