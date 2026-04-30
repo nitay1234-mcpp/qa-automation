@@ -16,6 +16,15 @@ This report outlines the current flaky tests identified in the qa-automation rep
    - Tests variations of webhook payloads and their handling.
    - Marked as flaky with retries to handle occasional timing-related failures.
 
+
+## Current Flaky Issues Tracked for Quarantine and Resolution
+
+- Issue #457: Quarantine flaky test: test_webhook_variations in test_payment_processing.py
+- Issue #456: Quarantine flaky test: test_multiple_payment_attempts in test_payment_processing.py
+- Issue #455: Quarantine flaky test: test_webhook_handling in test_payment_processing.py
+
+These issues are actively tracked for quarantine and ongoing resolution efforts to reduce test instability.
+
 ## Rationale for Retry Strategy
 
 - These tests interact with external-like components (e.g., webhook processing, payment gateway simulation), which can introduce transient failures due to network latency, timing, or service availability.
@@ -24,12 +33,13 @@ This report outlines the current flaky tests identified in the qa-automation rep
 
 ## Recommendations
 
-- Continue monitoring these tests for flakiness trends.
+- Continue monitoring these tests for flakiness trends and progress on the quarantine issues.
 - Consider additional isolation or mocking of external dependencies if flaky failures persist.
 - Maintain detailed logs to aid in diagnosing flaky behavior.
+- Regularly review and update quarantine status to ensure timely resolution.
 
 ---
 
-This documentation aims to provide clarity on the current flaky tests and justify the existing approach to stabilize them using retries.
+This documentation aims to provide clarity on the current flaky tests and justify the existing approach to stabilize them using retries and issue tracking.
 
 Please advise if you require further enhancements or additional documentation.
