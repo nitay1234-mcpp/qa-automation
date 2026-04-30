@@ -25,20 +25,42 @@ function randomChoice(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
 }
 
-// Generate payment amount using sophisticated distributions and edge cases
-function generateAmount() {
+// Generate payment amount using distributions and currency-specific rules
+function generateAmount(currency) {
     // Define edge cases explicitly
     const edgeCases = [0, 1, 999999]; // zero, minimal, and very large amounts
     if (Math.random() < 0.05) { // 5% chance to use an edge case
         return randomChoice(edgeCases);
     }
 
-    // Use a normal distribution centered around 100 with stddev 50
-    let amount = Math.round(normal(100, 50));
+    let amount;
+    // Select distribution based on environment variable or default
+    const distributionType = __ENV.DISTRIBUTION_TYPE || 'normal';
 
-    // Clamp amount within business rules
-    if (amount < 10) amount = 10;
-    if (amount > 1000) amount = 1000;
+    if (distributionType === 'uniform') {
+        amount = Math.round(uniform(10, 1000));
+    } else { // default to normal
+        amount = Math.round(normal(100, 50));
+    }
+
+    // Currency-specific validation and adjustments
+    switch (currency) {
+        case 'USD':
+            if (amount < 10) amount = 10;
+            if (amount > 1000) amount = 1000;
+            break;
+        case 'EUR':
+            if (amount < 20) amount = 20;
+            if (amount > 1500) amount = 1500;
+            break;
+        case 'GBP':
+            if (amount < 5) amount = 5;
+            if (amount > 800) amount = 800;
+            break;
+        default:
+            if (amount < 10) amount = 10;
+            if (amount > 1000) amount = 1000;
+    }
 
     return amount;
 }
@@ -54,7 +76,7 @@ function generatePaymentData() {
 
     const paymentMethod = randomChoice(paymentMethods);
     const currency = randomChoice(currencies);
-    const amount = generateAmount(); // Use improved synthetic distribution
+    const amount = generateAmount(currency); // Pass currency for specific rules
 
     let cardNumber = '';
     if (paymentMethod === 'paypal') {
