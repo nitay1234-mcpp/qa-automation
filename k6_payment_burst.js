@@ -24,6 +24,19 @@ function randomChoice(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
 }
 
+// Generate payment amount based on varied distributions
+function generateAmount() {
+    // Example distributions: 70% low amounts (10-100), 20% medium (101-300), 10% high (301-1000)
+    const rand = Math.random();
+    if (rand < 0.7) {
+        return randomInt(10, 100);
+    } else if (rand < 0.9) {
+        return randomInt(101, 300);
+    } else {
+        return randomInt(301, 1000);
+    }
+}
+
 // Generate randomized payment data for each request
 function generatePaymentData() {
     const currencies = ['USD', 'EUR', 'GBP'];
@@ -35,7 +48,7 @@ function generatePaymentData() {
 
     const paymentMethod = randomChoice(paymentMethods);
     const currency = randomChoice(currencies);
-    const amount = randomInt(10, 500); // Random amount between 10 and 500
+    const amount = generateAmount(); // Use enhanced distribution
 
     let cardNumber = '';
     if (paymentMethod === 'paypal') {
