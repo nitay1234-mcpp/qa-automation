@@ -72,17 +72,19 @@ class TestAdditionalPaymentMethods:
     ])
     @patch.object(PaymentProcessor, 'process_payment')
     def test_various_payment_methods(self, mock_process_payment, payment_method, expected_status):
-        # Assign distributions based on payment method type
+        # Assign distributions and parameters based on payment method type
         distribution = 'normal'
         max_amount = 10000
+        dist_params = {}
         if payment_method['type'] == 'gift_card':
             distribution = 'uniform'
             max_amount = 100
         elif payment_method['type'] == 'bank_transfer':
             distribution = 'normal'
             max_amount = 5000
+            dist_params = {'mean': 1500, 'std_dev': 750}
 
-        amount = generate_payment_amount(distribution=distribution, min_amount=1, max_amount=max_amount)
+        amount = generate_payment_amount(distribution=distribution, min_amount=1, max_amount=max_amount, **dist_params)
         
         # Validate payment amount against business rules
         try:
@@ -97,7 +99,7 @@ class TestAdditionalPaymentMethods:
         logger.debug(f"Response: {response}")
         assert response['status'] == expected_status, f"Expected {expected_status} for {payment_method}. Got {response['status']}"
 
-    @pytest.mark.parametrize("edge_amount", [1, 100, 5000, 10000])
+    @pytest.mark.parametrize("edge_amount", [1, 100, 5000, 10000, 0, -10, 15000])
     @patch.object(PaymentProcessor, 'process_payment')
     def test_payment_amount_edge_cases(self, mock_process_payment, edge_amount):
         logger.info(f"Testing edge case payment amount: {edge_amount}")
@@ -106,6 +108,7 @@ class TestAdditionalPaymentMethods:
         try:
             validate_payment_amount(edge_amount, min_amount=1, max_amount=10000)
         except ValueError as e:
+            logger.warning(f"Skipping test for invalid edge amount: {edge_amount} - {e}")
             pytest.skip(str(e))
 
         mock_process_payment.return_value = {'status': 'success'}
