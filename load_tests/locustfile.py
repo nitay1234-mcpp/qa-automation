@@ -1,5 +1,6 @@
 from locust import HttpUser, task, between
 import random
+import numpy as np
 
 class WebhookLoadTest(HttpUser):
     wait_time = between(1, 3)
@@ -12,11 +13,17 @@ class WebhookLoadTest(HttpUser):
 class PaymentFlowLoadTest(HttpUser):
     wait_time = between(1, 3)
 
+    def generate_payment_amount(self):
+        # Generate payment amount using a normal distribution centered around 100 with std dev 50
+        # Clip values to be between 1 and 500
+        amount = np.random.normal(loc=100, scale=50)
+        return float(np.clip(amount, 1, 500))
+
     @task(5)
     def valid_payment(self):
         payload = {
             "payment_method": random.choice(["paypal", "credit_card", "third_party_gateway"]),
-            "amount": random.uniform(1.0, 500.0),
+            "amount": self.generate_payment_amount(),
             "card_expired": False,
             "fraudulent": False
         }
@@ -26,7 +33,7 @@ class PaymentFlowLoadTest(HttpUser):
     def fraudulent_payment(self):
         payload = {
             "payment_method": random.choice(["paypal", "credit_card", "third_party_gateway"]),
-            "amount": random.uniform(1.0, 500.0),
+            "amount": self.generate_payment_amount(),
             "card_expired": False,
             "fraudulent": True
         }
@@ -36,7 +43,7 @@ class PaymentFlowLoadTest(HttpUser):
     def expired_card_payment(self):
         payload = {
             "payment_method": random.choice(["paypal", "credit_card", "third_party_gateway"]),
-            "amount": random.uniform(1.0, 500.0),
+            "amount": self.generate_payment_amount(),
             "card_expired": True,
             "fraudulent": False
         }
@@ -46,7 +53,7 @@ class PaymentFlowLoadTest(HttpUser):
     def unsupported_method_payment(self):
         payload = {
             "payment_method": "unsupported_method",
-            "amount": random.uniform(1.0, 500.0),
+            "amount": self.generate_payment_amount(),
             "card_expired": False,
             "fraudulent": False
         }
@@ -55,14 +62,18 @@ class PaymentFlowLoadTest(HttpUser):
 class RefundLoadTest(HttpUser):
     wait_time = between(1, 3)
 
+    def generate_refund_amount(self, max_amount):
+        # Generate refund amount using uniform distribution between 1 and max_amount
+        return random.uniform(1.0, max_amount)
+
     @task(3)
     def full_refund(self):
-        payload = {"refund_amount": random.uniform(1.0, 200.0), "partial": False}
+        payload = {"refund_amount": self.generate_refund_amount(200.0), "partial": False}
         self.client.post("/refund/process", json=payload)
 
     @task(2)
     def partial_refund_valid(self):
-        payload = {"refund_amount": random.uniform(1.0, 100.0), "partial": True}
+        payload = {"refund_amount": self.generate_refund_amount(100.0), "partial": True}
         self.client.post("/refund/process", json=payload)
 
     @task(1)
@@ -100,3 +111,10 @@ class OnboardingLoadTest(HttpUser):
             "real_time_processing": True
         }
         self.client.post("/merchant/onboard", json=payload)
+
+# Synthetic Data Generation Approach:
+# - Payment amounts are generated using a normal distribution centered around 100 with a standard deviation of 50.
+# - Amounts are clipped to the range 1 to 500 to ensure valid payment values.
+# - Refund amounts use uniform distribution within specified max limits.
+# - Edge cases such as zero and very high payments are explicitly tested in separate tasks.
+# This approach improves realism and coverage of the payment amount spectrum for load testing.
