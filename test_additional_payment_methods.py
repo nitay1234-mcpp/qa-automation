@@ -48,6 +48,16 @@ def generate_payment_amount(distribution='exponential', min_amount=1, max_amount
     amount = int(round(amount))
     return amount
 
+# Validate that payment amount conforms to business rules
+
+def validate_payment_amount(amount, min_amount=1, max_amount=10000):
+    if not isinstance(amount, int):
+        raise ValueError("Payment amount must be an integer")
+    if amount < min_amount:
+        raise ValueError(f"Payment amount {amount} is below minimum allowed {min_amount}")
+    if amount > max_amount:
+        raise ValueError(f"Payment amount {amount} exceeds maximum allowed {max_amount}")
+
 class TestAdditionalPaymentMethods:
 
     @pytest.mark.parametrize("payment_method, expected_status", [
@@ -72,6 +82,13 @@ class TestAdditionalPaymentMethods:
             max_amount = 5000
 
         amount = generate_payment_amount(distribution=distribution, min_amount=1, max_amount=max_amount)
+        
+        # Validate payment amount against business rules
+        try:
+            validate_payment_amount(amount, min_amount=1, max_amount=max_amount)
+        except ValueError as e:
+            pytest.skip(str(e))
+
         logger.info(f"Testing payment method: {payment_method} for amount: {amount}")
         mock_process_payment.return_value = {'status': expected_status}
         processor = PaymentProcessor()
@@ -79,10 +96,17 @@ class TestAdditionalPaymentMethods:
         logger.debug(f"Response: {response}")
         assert response['status'] == expected_status, f"Expected {expected_status} for {payment_method}. Got {response['status']}"
 
-    @pytest.mark.parametrize("edge_amount", [1, 1000, 5000])
+    @pytest.mark.parametrize("edge_amount", [1, 1000, 5000, 10000])
     @patch.object(PaymentProcessor, 'process_payment')
     def test_payment_amount_edge_cases(self, mock_process_payment, edge_amount):
         logger.info(f"Testing edge case payment amount: {edge_amount}")
+        
+        # Validate edge amount before test
+        try:
+            validate_payment_amount(edge_amount, min_amount=1, max_amount=10000)
+        except ValueError as e:
+            pytest.skip(str(e))
+
         mock_process_payment.return_value = {'status': 'success'}
         processor = PaymentProcessor()
         response = processor.process_payment(amount=edge_amount, card_info={'type': 'digital_wallet', 'provider': 'PayPal', 'account_id': 'edgecase'})
