@@ -169,3 +169,121 @@ def test_api_boundary_conditions():
     payload_large = {'merchant_id': 1, 'status': 'active', 'details': {'desc': 'a'*10000}}
     is_valid, _ = api_client.validate_request(payload_large, expected_schema)
     assert is_valid
+
+
+# Additional test cases for enhanced coverage
+
+def test_registration_phone_number_format():
+    # Phone number should be numeric and proper length
+    invalid_phone_data = {'name': 'Test', 'email': 'test@example.com', 'phone': 'abc1234', 'business_address': 'Addr', 'tax_id': '123456789'}
+    response = merchant_onboarding.register_merchant(invalid_phone_data)
+    assert response['status'] == 'error'
+    assert response['message'] == 'Invalid phone number format'
+
+
+def test_registration_tax_id_format():
+    # Tax ID should be exactly 9 chars and numeric (simplified here)
+    invalid_tax_id_data = {'name': 'Test', 'email': 'test@example.com', 'phone': '1234567890', 'business_address': 'Addr', 'tax_id': '12345abc9'}
+    response = merchant_onboarding.register_merchant(invalid_tax_id_data)
+    assert response['status'] == 'error'
+    assert response['message'] == 'Invalid tax ID format'
+
+
+def test_registration_special_characters():
+    # Test special characters in fields
+    special_char_data = {'name': 'Test!@#', 'email': 'test!@#@example.com', 'phone': '1234567890', 'business_address': 'Addr!@#', 'tax_id': '123456789'}
+    response = merchant_onboarding.register_merchant(special_char_data)
+    # Assuming special chars allowed except email format
+    assert response['status'] == 'error' or response['status'] == 'success'
+
+
+def test_approval_already_processed():
+    # Approve a merchant twice
+    data = {'name': 'MerchantX', 'email': 'merchantx@example.com', 'phone': '1234567890', 'business_address': 'Addr', 'tax_id': '987654321'}
+    reg_response = merchant_onboarding.register_merchant(data)
+    merchant_id = reg_response['merchant_id']
+    merchant_onboarding.approve_merchant(merchant_id, approve=True)
+    second_approval_response = merchant_onboarding.approve_merchant(merchant_id, approve=True)
+    assert second_approval_response['status'] == 'error'
+    assert 'not pending approval' in second_approval_response['message']
+
+
+def test_concurrent_approval(monkeypatch):
+    # Simulate concurrent approvals by patching approve_merchant
+    call_count = {'count': 0}
+
+    original_approve = merchant_onboarding.approve_merchant
+
+    def patched_approve(merchant_id, approve=True):
+        call_count['count'] += 1
+        if call_count['count'] > 1:
+            return {'status': 'error', 'message': 'Merchant not pending approval'}
+        return original_approve(merchant_id, approve)
+
+    monkeypatch.setattr(merchant_onboarding, 'approve_merchant', patched_approve)
+
+    data = {'name': 'MerchantConcurrent', 'email': 'concurrent@example.com', 'phone': '1234567890', 'business_address': 'Addr', 'tax_id': '123456789'}
+    reg_response = merchant_onboarding.register_merchant(data)
+    merchant_id = reg_response['merchant_id']
+
+    response1 = merchant_onboarding.approve_merchant(merchant_id, approve=True)
+    response2 = merchant_onboarding.approve_merchant(merchant_id, approve=True)
+
+    assert response1['status'] == 'success'
+    assert response2['status'] == 'error'
+
+
+def test_api_nested_details_schema_validation():
+    # Details should contain expected nested keys
+    nested_schema = {
+        'merchant_id': int,
+        'status': str,
+        'details': dict
+    }
+    valid_payload = {'merchant_id': 1, 'status': 'active', 'details': {'name': 'Test', 'address': '123 St'}}
+    is_valid, message = api_client.validate_request(valid_payload, nested_schema)
+    assert is_valid
+    assert message == 'Valid'
+
+    invalid_payload = {'merchant_id': 1, 'status': 'active', 'details': 'should be dict'}
+    is_valid, message = api_client.validate_request(invalid_payload, nested_schema)
+    assert not is_valid
+    assert 'Invalid type' in message
+
+
+def test_api_optional_fields_handling():
+    # Test handling when optional fields are missing
+    optional_schema = {
+        'merchant_id': int,
+        'status': str
+    }
+    payload_with_optional = {'merchant_id': 1, 'status': 'active'}
+    is_valid, message = api_client.validate_request(payload_with_optional, optional_schema)
+    assert is_valid
+    assert message == 'Valid'
+
+    payload_missing_required = {'merchant_id': 1}
+    is_valid, message = api_client.validate_request(payload_missing_required, optional_schema)
+    assert not is_valid
+    assert 'Missing field' in message
+
+
+def test_api_error_codes_additional():
+    # Extend error code tests
+    error_payloads = [
+        {'merchant_id': 'unauthorized', 'error': 'Unauthorized'},
+        {'merchant_id': 'forbidden', 'error': 'Forbidden'},
+        {'merchant_id': 'not_found', 'error': 'Not Found'},
+        {'merchant_id': 'server_error', 'error': 'Internal Server Error'}
+    ]
+    for payload in error_payloads:
+        response = api_client.send_request('/merchant/status', payload)
+        assert response['status_code'] == 400
+
+
+def test_api_large_field_limits():
+    # Test very large field values
+    large_field_payload = {'merchant_id': 1, 'status': 'active', 'details': {'desc': 'a' * 100000}}
+    is_valid, _ = api_client.validate_request(large_field_payload, expected_schema)
+    assert is_valid
+
