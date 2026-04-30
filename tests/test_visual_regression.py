@@ -67,4 +67,24 @@ def test_login_page_visual_regression(browser_context):
     visual_regression_test(page, 'login_page', "http://localhost:8000/login")
 
 
+def test_dashboard_visual_regression(browser_context):
+    page = browser_context.new_page()
+    visual_regression_test(page, 'dashboard', "http://localhost:8000/dashboard")
+
+
+def test_user_profile_visual_regression(browser_context):
+    page = browser_context.new_page()
+    visual_regression_test(page, 'user_profile', "http://localhost:8000/profile")
+
+
+def test_settings_visual_regression(browser_context):
+    page = browser_context.new_page()
+    visual_regression_test(page, 'settings', "http://localhost:8000/settings")
+
+
+def test_checkout_flow_visual_regression(browser_context):
+    page = browser_context.new_page()
+    visual_regression_test(page, 'checkout_flow', "http://localhost:8000/checkout")
+
+
 # Additional tests for other important UI states can be added similarly
