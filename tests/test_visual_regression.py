@@ -1,6 +1,7 @@
 import pytest
 from playwright.sync_api import sync_playwright
 import os
+from PIL import Image, ImageChops
 
 BASELINE_DIR = os.path.join(os.path.dirname(__file__), 'visual_baselines')
 CURRENT_DIR = os.path.join(os.path.dirname(__file__), 'visual_current')
@@ -17,29 +18,53 @@ def browser_context():
         browser.close()
 
 
-def test_homepage_visual_regression(browser_context):
-    page = browser_context.new_page()
-    page.goto("http://localhost:8000")  # Change to your app URL
-    screenshot_path = os.path.join(CURRENT_DIR, 'homepage.png')
+def images_are_similar(img1_path, img2_path, threshold=10):
+    img1 = Image.open(img1_path).convert('RGB')
+    img2 = Image.open(img2_path).convert('RGB')
+    diff = ImageChops.difference(img1, img2)
+    # Calculate the bounding box of non-zero regions in the difference image
+    bbox = diff.getbbox()
+    if not bbox:
+        return True
+    # Calculate the diff histogram to quantify difference
+    hist = diff.histogram()
+    # Sum of differences
+    diff_sum = sum(hist)
+    return diff_sum < threshold
+
+
+def visual_regression_test(page, name, url):
+    page.goto(url)
+    screenshot_path = os.path.join(CURRENT_DIR, f'{name}.png')
+    baseline_path = os.path.join(BASELINE_DIR, f'{name}.png')
+
     page.screenshot(path=screenshot_path, full_page=True)
 
-    baseline_path = os.path.join(BASELINE_DIR, 'homepage.png')
     if not os.path.exists(baseline_path):
         page.screenshot(path=baseline_path, full_page=True)
-        pytest.skip("Baseline image did not exist, created new baseline.")
+        pytest.skip(f"Baseline image for {name} did not exist, created new baseline.")
 
-    # Compare screenshots using simple pixel match using Playwright
-    comparison = page.context._impl_obj._browser._connection.send('playwright:compareScreenshots', {
-        'actual': screenshot_path,
-        'expected': baseline_path,
-    })
+    assert os.path.exists(screenshot_path), "Screenshot was not created."
+    assert os.path.exists(baseline_path), "Baseline screenshot is missing."
 
-    # The above internal API may not be stable; alternatively, use image diff libraries externally.
-    # Here we just check file existence and size difference as a placeholder.
-    actual_size = os.path.getsize(screenshot_path)
-    expected_size = os.path.getsize(baseline_path)
-    size_diff = abs(actual_size - expected_size)
+    assert images_are_similar(screenshot_path, baseline_path), f"Visual regression detected for {name}."
 
-    # Fail if size difference exceeds threshold
-    assert size_diff < 10000, f"Visual regression detected: size difference {size_diff} bytes exceeds threshold."
 
+# Test multiple key UI states
+
+def test_homepage_visual_regression(browser_context):
+    page = browser_context.new_page()
+    visual_regression_test(page, 'homepage', "http://localhost:8000")
+
+
+def test_error_page_visual_regression(browser_context):
+    page = browser_context.new_page()
+    visual_regression_test(page, 'error_page', "http://localhost:8000/nonexistent")
+
+
+def test_login_page_visual_regression(browser_context):
+    page = browser_context.new_page()
+    visual_regression_test(page, 'login_page', "http://localhost:8000/login")
+
+
+# Additional tests for other important UI states can be added similarly
