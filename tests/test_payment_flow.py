@@ -2,6 +2,7 @@ import pytest
 from playwright.sync_api import Page
 import logging
 from datetime import datetime
+import threading
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -199,3 +200,42 @@ def test_fraudulent_payment_detection(navigate_to_checkout, payment_details, exp
         page.wait_for_selector('.payment-success')
         assert page.locator('.payment-success').is_visible()
         log_event("Payment Success", {"timestamp": datetime.now()})
+
+# New test case for timeout during payment processing
+@pytest.mark.parametrize('amount, expected_error', [
+    (100, 'Payment processing timeout'),
+])
+def test_payment_processing_timeout(navigate_to_checkout, amount, expected_error):
+    page = navigate_to_checkout
+    page.fill('[aria-label="Payment amount"]', str(amount))
+    # Simulate timeout by delaying response or interaction
+    page.evaluate("window.simulateTimeout = true;")
+    page.click('button[type="submit"]')
+
+    # Check for timeout error message
+    page.wait_for_selector('.error-message')
+    assert page.locator('.error-message').is_visible()
+    assert expected_error in page.locator('.error-message').inner_text()
+    log_event("Payment Timeout", {"amount": amount, "error": expected_error, "timestamp": datetime.now()})
+
+# New test case for concurrency issues when multiple payments processed simultaneously
+def perform_payment(page: Page, amount: float):
+    page.fill('[aria-label="Payment amount"]', str(amount))
+    page.click('button[type="submit"]')
+    page.wait_for_selector('.payment-success')
+    assert page.locator('.payment-success').is_visible()
+    log_event("Concurrent Payment Success", {"amount": amount, "timestamp": datetime.now()})
+
+@pytest.mark.parametrize('amounts', [
+    ([100, 200, 300]),  # Simultaneous payments
+])
+def test_concurrency_payments(page: Page, amounts):
+    page.goto('https://staging.novapay.io/checkout')
+    threads = []
+    for amount in amounts:
+        t = threading.Thread(target=perform_payment, args=(page, amount))
+        threads.append(t)
+        t.start()
+    for t in threads:
+        t.join()
+
