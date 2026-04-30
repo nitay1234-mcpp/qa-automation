@@ -1,47 +1,35 @@
 # Flaky Tests Report for qa-automation Repository
 
-This report identifies potential flaky test candidates based on analysis of test files and suggests strategies to stabilize them.
+This report outlines the current flaky tests identified in the qa-automation repository, their behaviors, and the rationale for the existing retry strategy.
 
-## Potential Flaky Test Candidates
+## Identified Flaky Tests with Retry Mechanism
 
-1. **Tests involving PaymentProcessor external interactions**
-   - Many tests depend on the `PaymentProcessor` which likely interacts with external payment gateways and services.
-   - Examples include tests in `test_additional_payment_methods.py`, `test_payment_contracts.py`, `test_payment_processing.py`, and others.
+1. **test_webhook_handling**
+   - Tests webhook event handling in PaymentProcessor.
+   - Marked with `@pytest.mark.flaky(reruns=3, reruns_delay=2)` to retry on intermittent failures.
 
-2. **Tests with timing and concurrency sensitivity**
-   - Tests simulating payment timeouts and concurrent payment processing, e.g., in `test_payment_additional_edge_cases.py`.
-   - Use of decorators like `@pytest.mark.timeout` and `@pytest.mark.flaky` indicate known timing sensitivity.
+2. **test_multiple_payment_attempts**
+   - Simulates multiple rapid payment attempts.
+   - Uses retry decorator to mitigate transient issues.
 
-3. **Webhook handling tests**
-   - Tests that handle webhook events and validate signatures, e.g., in `test_webhook_enhancements.py` and `test_payment_contracts.py`.
-   - These tests depend on external webhook delivery which may be unreliable.
+3. **test_webhook_variations**
+   - Tests variations of webhook payloads and their handling.
+   - Marked as flaky with retries to handle occasional timing-related failures.
 
-4. **Retry logic and transient failure handling tests**
-   - Tests that validate retry mechanisms for failed payments suggest intermittent failures.
+## Rationale for Retry Strategy
 
-## Suggested Strategies to Stabilize Flaky Tests
+- These tests interact with external-like components (e.g., webhook processing, payment gateway simulation), which can introduce transient failures due to network latency, timing, or service availability.
+- The retry decorator allows for automatic re-execution of failing tests, reducing false negatives caused by such flakiness.
+- A delay between retries helps avoid immediate repeated failures due to temporary conditions.
 
-- **Mock External Dependencies:**
-  Replace actual calls to external payment gateways and webhook delivery with mocks or stubs to isolate tests from network or service instability.
+## Recommendations
 
-- **Increase Timeouts and Use Retries Wisely:**
-  Where timing is critical, increase test timeouts and apply controlled retries to reduce false negatives.
-
-- **Improve Test Isolation:**
-  Ensure tests clean up state and do not depend on shared mutable state or external side effects.
-
-- **Use Test Data Management:**
-  Use consistent and controlled test data to avoid variability in test inputs and results.
-
-- **Parallel Test Execution Control:**
-  Manage concurrency carefully; avoid race conditions by serializing tests that mutate shared resources.
-
-- **Add Detailed Logging and Metrics:**
-  Enhance logging around flaky tests to diagnose causes and monitor flakiness patterns over time.
-
-- **Continuous Flakiness Monitoring:**
-  Implement CI metrics or dashboards that track flaky test occurrences and prioritize stabilization efforts.
+- Continue monitoring these tests for flakiness trends.
+- Consider additional isolation or mocking of external dependencies if flaky failures persist.
+- Maintain detailed logs to aid in diagnosing flaky behavior.
 
 ---
 
-Please let me know if you want me to assist with implementing any of these strategies or help with further analysis.
+This documentation aims to provide clarity on the current flaky tests and justify the existing approach to stabilize them using retries.
+
+Please advise if you require further enhancements or additional documentation.
