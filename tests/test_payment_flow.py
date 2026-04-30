@@ -137,3 +137,65 @@ def test_visual_form_input_fields(navigate_to_checkout, amount):
     page = navigate_to_checkout
     page.fill('[aria-label="Payment amount"]', str(amount))
     page.screenshot(path=f'screenshots/form_input_{amount}.png')  # Capture screenshot
+
+
+# New test cases added for enhanced coverage
+
+# Test other payment methods (e.g., bank transfer, digital wallet)
+@pytest.mark.parametrize('payment_method, expected_message', [
+    ('bank_transfer', 'Bank transfer selected'),
+    ('digital_wallet', 'Digital wallet selected'),
+])
+def test_other_payment_methods(navigate_to_checkout, payment_method, expected_message):
+    page = navigate_to_checkout
+    page.click(f'button[aria-label="{payment_method.replace("_", " ").title()}"]')
+    page.wait_for_selector('.payment-method-confirmation')
+    assert expected_message in page.locator('.payment-method-confirmation').inner_text()
+    log_event("Payment Method Selection", {"method": payment_method, "timestamp": datetime.now()})
+
+# Test complete checkout flow including cart validation and address input
+@pytest.mark.parametrize('cart_valid, address_valid, expected_error', [
+    (True, True, None),
+    (False, True, 'Invalid cart'),
+    (True, False, 'Invalid address'),
+])
+def test_complete_checkout_flow(page: Page, cart_valid, address_valid, expected_error):
+    page.goto('https://staging.novapay.io/cart')
+    if not cart_valid:
+        page.evaluate('window.cartIsValid = false')
+    if not address_valid:
+        page.fill('[aria-label="Shipping address"]', '')
+    else:
+        page.fill('[aria-label="Shipping address"]', '123 Test St')
+    page.click('button[aria-label="Proceed to checkout"]')
+    if expected_error:
+        page.wait_for_selector('.error-message')
+        assert page.locator('.error-message').is_visible()
+        assert expected_error in page.locator('.error-message').inner_text()
+        log_event("Checkout Flow Error", {"error": expected_error, "timestamp": datetime.now()})
+    else:
+        page.wait_for_selector('.checkout-page')
+        assert page.url.endswith('/checkout')
+        log_event("Checkout Flow Success", {"timestamp": datetime.now()})
+
+# Security test for fraudulent payment detection
+@pytest.mark.parametrize('payment_details, expected_error', [
+    ({'card_number': '4111111111111111', 'cvv': '123', 'fraud_flag': True}, 'Fraudulent payment detected'),
+    ({'card_number': '4111111111111111', 'cvv': '123', 'fraud_flag': False}, None),
+])
+def test_fraudulent_payment_detection(navigate_to_checkout, payment_details, expected_error):
+    page = navigate_to_checkout
+    page.fill('[aria-label="Card Number"]', payment_details['card_number'])
+    page.fill('[aria-label="CVV"]', payment_details['cvv'])
+    if payment_details['fraud_flag']:
+        page.evaluate('window.fraudFlag = true')
+    page.click('button[type="submit"]')
+    if expected_error:
+        page.wait_for_selector('.error-message')
+        assert page.locator('.error-message').is_visible()
+        assert expected_error in page.locator('.error-message').inner_text()
+        log_event("Fraud Detection", {"error": expected_error, "timestamp": datetime.now()})
+    else:
+        page.wait_for_selector('.payment-success')
+        assert page.locator('.payment-success').is_visible()
+        log_event("Payment Success", {"timestamp": datetime.now()})
