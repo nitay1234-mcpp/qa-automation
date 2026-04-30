@@ -1,5 +1,17 @@
 from locust import HttpUser, task, between
 import random
+import math
+
+# Helper function to generate log-normal distributed amounts
+# Parameters are chosen to simulate realistic payment amounts
+# mean and sigma are parameters of the underlying normal distribution
+
+def generate_lognormal_amount(mean=3.5, sigma=1.0, min_amount=1.0, max_amount=500.0):
+    amount = random.lognormvariate(mean, sigma)
+    # Clamp to min and max
+    amount = max(min_amount, min(amount, max_amount))
+    # Round to 2 decimals
+    return round(amount, 2)
 
 class WebhookLoadTest(HttpUser):
     wait_time = between(1, 3)
@@ -16,7 +28,7 @@ class PaymentFlowLoadTest(HttpUser):
     def valid_payment(self):
         payload = {
             "payment_method": random.choice(["paypal", "credit_card", "third_party_gateway"]),
-            "amount": random.uniform(1.0, 500.0),
+            "amount": generate_lognormal_amount(),
             "card_expired": False,
             "fraudulent": False
         }
@@ -26,7 +38,7 @@ class PaymentFlowLoadTest(HttpUser):
     def fraudulent_payment(self):
         payload = {
             "payment_method": random.choice(["paypal", "credit_card", "third_party_gateway"]),
-            "amount": random.uniform(1.0, 500.0),
+            "amount": generate_lognormal_amount(),
             "card_expired": False,
             "fraudulent": True
         }
@@ -36,7 +48,7 @@ class PaymentFlowLoadTest(HttpUser):
     def expired_card_payment(self):
         payload = {
             "payment_method": random.choice(["paypal", "credit_card", "third_party_gateway"]),
-            "amount": random.uniform(1.0, 500.0),
+            "amount": generate_lognormal_amount(),
             "card_expired": True,
             "fraudulent": False
         }
@@ -46,7 +58,7 @@ class PaymentFlowLoadTest(HttpUser):
     def unsupported_method_payment(self):
         payload = {
             "payment_method": "unsupported_method",
-            "amount": random.uniform(1.0, 500.0),
+            "amount": generate_lognormal_amount(),
             "card_expired": False,
             "fraudulent": False
         }
