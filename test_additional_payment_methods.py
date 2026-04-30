@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 # Utility function to generate realistic payment amounts
 
-def generate_payment_amount(distribution='exponential', min_amount=1, max_amount=1000, **kwargs):
+def generate_payment_amount(distribution='normal', min_amount=1, max_amount=10000, **kwargs):
     """
     Generate a payment amount based on specified distribution and parameters.
 
@@ -25,12 +25,13 @@ def generate_payment_amount(distribution='exponential', min_amount=1, max_amount
         int: Generated payment amount bounded by min_amount and max_amount.
     """
     amount = min_amount
+    
     if distribution == 'exponential':
         mean = kwargs.get('mean', 200)
         amount = int(np.random.exponential(scale=mean))
     elif distribution == 'normal':
         mean = kwargs.get('mean', 200)
-        std_dev = kwargs.get('std_dev', 50)
+        std_dev = kwargs.get('std_dev', 100)
         amount = int(np.random.normal(loc=mean, scale=std_dev))
     elif distribution == 'uniform':
         amount = int(np.random.uniform(low=min_amount, high=max_amount))
@@ -72,8 +73,8 @@ class TestAdditionalPaymentMethods:
     @patch.object(PaymentProcessor, 'process_payment')
     def test_various_payment_methods(self, mock_process_payment, payment_method, expected_status):
         # Assign distributions based on payment method type
-        distribution = 'exponential'
-        max_amount = 1000
+        distribution = 'normal'
+        max_amount = 10000
         if payment_method['type'] == 'gift_card':
             distribution = 'uniform'
             max_amount = 100
@@ -96,7 +97,7 @@ class TestAdditionalPaymentMethods:
         logger.debug(f"Response: {response}")
         assert response['status'] == expected_status, f"Expected {expected_status} for {payment_method}. Got {response['status']}"
 
-    @pytest.mark.parametrize("edge_amount", [1, 1000, 5000, 10000])
+    @pytest.mark.parametrize("edge_amount", [1, 100, 5000, 10000])
     @patch.object(PaymentProcessor, 'process_payment')
     def test_payment_amount_edge_cases(self, mock_process_payment, edge_amount):
         logger.info(f"Testing edge case payment amount: {edge_amount}")
