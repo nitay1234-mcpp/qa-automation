@@ -239,3 +239,144 @@ def test_concurrency_payments(page: Page, amounts):
     for t in threads:
         t.join()
 
+# Additional test cases for enhanced coverage
+
+# 1. Additional payment methods (apple pay, google pay)
+@pytest.mark.parametrize('payment_method, expected_message', [
+    ('apple_pay', 'Apple Pay selected'),
+    ('google_pay', 'Google Pay selected'),
+])
+def test_additional_payment_methods(navigate_to_checkout, payment_method, expected_message):
+    page = navigate_to_checkout
+    page.click(f'button[aria-label="{payment_method.replace("_", " ").title()}"]')
+    page.wait_for_selector('.payment-method-confirmation')
+    assert expected_message in page.locator('.payment-method-confirmation').inner_text()
+    log_event("Payment Method Selection", {"method": payment_method, "timestamp": datetime.now()})
+
+# 2. Payment in different currencies/localization
+@pytest.mark.parametrize('currency, amount, expected_success', [
+    ('USD', 100, True),
+    ('EUR', 85, True),
+    ('JPY', 11000, True),
+])
+def test_payment_in_different_currencies(navigate_to_checkout, currency, amount, expected_success):
+    page = navigate_to_checkout
+    page.select_option('select[aria-label="Currency"]', currency)
+    page.fill('[aria-label="Payment amount"]', str(amount))
+    page.click('button[type="submit"]')
+    if expected_success:
+        page.wait_for_selector('.payment-success')
+        assert page.locator('.payment-success').is_visible()
+        log_event("Payment Success", {"currency": currency, "amount": amount, "timestamp": datetime.now()})
+
+# 3. Partial and split payments
+ def test_partial_and_split_payments(navigate_to_checkout):
+    page = navigate_to_checkout
+    # Assuming UI allows split payments by multiple methods/amounts
+    page.fill('[aria-label="Payment amount"]', '50')
+    page.click('button[aria-label="Add payment method"]')
+    page.fill('[aria-label="Split payment amount"]', '50')
+    page.click('button[type="submit"]')
+    page.wait_for_selector('.payment-success')
+    assert page.locator('.payment-success').is_visible()
+    log_event("Partial/Split Payment Success", {"timestamp": datetime.now()})
+
+# 4. Payment access by user roles
+@pytest.mark.parametrize('user_role, expected_access', [
+    ('admin', True),
+    ('user', False),
+])
+def test_payment_access_by_user_role(navigate_to_checkout, user_role, expected_access):
+    page = navigate_to_checkout
+    page.evaluate(f'window.setUserRole("{user_role}")')
+    page.goto('https://staging.novapay.io/checkout')
+    if expected_access:
+        assert page.locator('button[type="submit"]').is_enabled()
+    else:
+        assert page.locator('button[type="submit"]').is_disabled()
+    log_event("User Role Access", {"role": user_role, "timestamp": datetime.now()})
+
+# 5. Refunds and chargebacks
+ def test_refund_and_chargeback_flow(navigate_to_checkout):
+    page = navigate_to_checkout
+    page.fill('[aria-label="Payment amount"]', '100')
+    page.click('button[type="submit"]')
+    page.wait_for_selector('.payment-success')
+    page.click('button[aria-label="Request refund"]')
+    page.fill('[aria-label="Refund amount"]', '50')
+    page.click('button[type="submit"]')
+    page.wait_for_selector('.refund-success')
+    assert page.locator('.refund-success').is_visible()
+    log_event("Refund Processed", {"timestamp": datetime.now()})
+
+# 6. Accessibility checks
+ def test_accessibility_of_payment_form(navigate_to_checkout):
+    page = navigate_to_checkout
+    assert page.locator('form[aria-label="Payment form"]').is_visible()
+    inputs = page.locator('form[aria-label="Payment form"] input')
+    for i in range(inputs.count()):
+        assert inputs.nth(i).get_attribute('aria-label') is not None
+    log_event("Accessibility Check", {"timestamp": datetime.now()})
+
+# 7. Retry mechanism
+ def test_retry_payment_mechanism(navigate_to_checkout):
+    page = navigate_to_checkout
+    page.fill('[aria-label="Payment amount"]', '100')
+    page.evaluate('window.failNextPayment = true')
+    page.click('button[type="submit"]')
+    page.wait_for_selector('.error-message')
+    page.click('button[aria-label="Retry"]')
+    page.wait_for_selector('.payment-success')
+    assert page.locator('.payment-success').is_visible()
+    log_event("Payment Retry Success", {"timestamp": datetime.now()})
+
+# 8. Integration with payment gateways
+ def test_integration_with_gateway(navigate_to_checkout):
+    page = navigate_to_checkout
+    page.fill('[aria-label="Payment amount"]', '100')
+    page.click('button[type="submit"]')
+    page.evaluate('window.simulateGatewayCallback(true)')
+    page.wait_for_selector('.payment-success')
+    assert page.locator('.payment-success').is_visible()
+    log_event("Gateway Integration Success", {"timestamp": datetime.now()})
+
+# 9. Enhanced concurrency with errors
+ def test_concurrency_with_errors(page: Page):
+    page.goto('https://staging.novapay.io/checkout')
+    results = []
+    def perform_payment(amount, should_fail=False):
+        page.fill('[aria-label="Payment amount"]', str(amount))
+        if should_fail:
+            page.evaluate('window.failNextPayment = true')
+        page.click('button[type="submit"]')
+        try:
+            page.wait_for_selector('.payment-success', timeout=5000)
+            results.append((amount, True))
+            log_event("Concurrent Payment Success", {"amount": amount, "timestamp": datetime.now()})
+        except:
+            results.append((amount, False))
+            log_event("Concurrent Payment Failure", {"amount": amount, "timestamp": datetime.now()})
+
+    import threading
+    threads = []
+    payments = [(100, False), (200, True), (300, False)]
+    for amount, fail in payments:
+        t = threading.Thread(target=perform_payment, args=(amount, fail))
+        threads.append(t)
+        t.start()
+    for t in threads:
+        t.join()
+    assert any(success for _, success in results), "At least one payment should succeed"
+
+# 10. Basic performance measurement
+ def test_basic_performance_measurement(navigate_to_checkout):
+    import time
+    page = navigate_to_checkout
+    start_time = time.time()
+    page.fill('[aria-label="Payment amount"]', '100')
+    page.click('button[type="submit"]')
+    page.wait_for_selector('.payment-success')
+    end_time = time.time()
+    duration = end_time - start_time
+    assert duration < 5, f"Payment processing took too long: {duration} seconds"
+    log_event("Performance Test", {"duration": duration, "timestamp": datetime.now()})
