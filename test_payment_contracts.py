@@ -49,6 +49,9 @@ class TestPaymentContract:
     def test_payment_processing_internal_server_error(self, mock_process_payment):
         """
         Test to ensure the payment processor correctly handles a 500 Internal Server Error.
+
+        This test mocks the process_payment method to simulate a 500 error response and verifies
+        that the returned response includes the appropriate status and error code as per the API contract.
         """
         logger.info("Testing payment processing handling 500 Internal Server Error.")
         mock_process_payment.return_value = {'status': 'internal_server_error', 'code': 500}
@@ -57,3 +60,7 @@ class TestPaymentContract:
         logger.debug(f"Received response for 500 error test: {response}")
         assert response['status'] == 'internal_server_error', "Expected 'internal_server_error' status for 500 error"
         assert response['code'] == 500, "Expected error code 500 for internal server error"
+        
+        # Ensure no unexpected keys are present
+        expected_keys = {'status', 'code'}
+        assert set(response.keys()) == expected_keys, f"Response keys mismatch. Expected {expected_keys}, got {set(response.keys())}"
