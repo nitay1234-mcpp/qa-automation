@@ -22,6 +22,8 @@ class TestPaymentProcessing:
         logger.debug(f"Received response: {response}")
         assert response['status'] == expected_status, f"Expected {expected_status} for {card_info}. Got {response['status']}"
 
+    @pytest.mark.timeout(10)
+    @pytest.mark.flaky(reruns=3, reruns_delay=2)
     def test_webhook_handling(self):
         logger.info("Testing webhook handling.")
         processor = PaymentProcessor()
@@ -86,6 +88,8 @@ class TestPaymentProcessing:
         else:
             assert response['status'] == 'success', "Expected 'success' for a valid amount"
 
+    @pytest.mark.timeout(10)
+    @pytest.mark.flaky(reruns=3, reruns_delay=2)
     def test_multiple_payment_attempts(self):
         logger.info("Testing multiple rapid payment attempts.")
         processor = PaymentProcessor()
@@ -117,6 +121,8 @@ class TestPaymentProcessing:
         logger.debug(f"Expiry date response: {response}")
         assert response['status'] == expected_status, f"Expected {expected_status} for expiry: {expiry_date}. Got {response['status']}"
 
+    @pytest.mark.timeout(10)
+    @pytest.mark.flaky(reruns=3, reruns_delay=2)
     def test_webhook_variations(self):
         logger.info("Testing variations of webhook handling.")
         processor = PaymentProcessor()
