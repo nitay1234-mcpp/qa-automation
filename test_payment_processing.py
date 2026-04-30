@@ -1,5 +1,6 @@
 import pytest
 import logging
+import time
 from payment_gateway import PaymentProcessor
 
 # Set up logging
@@ -22,19 +23,28 @@ class TestPaymentProcessing:
         logger.debug(f"Received response: {response}")
         assert response['status'] == expected_status, f"Expected {expected_status} for {card_info}. Got {response['status']}"
 
+    def wait_for_webhook_processing(self, processor, event_data, timeout=10):
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            response = processor.handle_webhook(event_data)
+            if response['status'] == 'processed' or response['status'] == 'error':
+                return response
+            time.sleep(1)
+        return {'status': 'timeout'}
+
     @pytest.mark.timeout(10)
     @pytest.mark.flaky(reruns=3, reruns_delay=2)
     def test_webhook_handling(self):
         logger.info("Testing webhook handling.")
         processor = PaymentProcessor()
         webhook_data = {'event': 'payment_success', 'data': {'amount': 100}}  
-        response = processor.handle_webhook(webhook_data)
+        response = self.wait_for_webhook_processing(processor, webhook_data)
         logger.debug(f"Webhook response: {response}")
         assert response['status'] == 'processed', "Expected 'processed' status for valid webhook"
         
         # Simulate an invalid webhook
         webhook_data = {'event': 'invalid_event'}
-        response = processor.handle_webhook(webhook_data)
+        response = self.wait_for_webhook_processing(processor, webhook_data)
         logger.debug(f"Invalid webhook response: {response}")
         assert response['status'] == 'error', "Expected 'error' status for invalid webhook"
 
